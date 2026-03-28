@@ -21,6 +21,12 @@ const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : nul
 const PASSWORD_HASH_PREFIX = "scrypt";
 const ASSIGNMENT_MODE = process.env.ASSIGNMENT_MODE !== "false";
 const ASSIGNMENT_DEFAULT_USER_ID = Number(process.env.ASSIGNMENT_DEFAULT_USER_ID || 0);
+const HARD_CODED_ADMIN_EMAIL = "admin@calclone.dev";
+const HARD_CODED_ADMIN_PASSWORD = "Admin@1234";
+const HARD_CODED_ADMIN_USER_ID =
+  Number.isInteger(ASSIGNMENT_DEFAULT_USER_ID) && ASSIGNMENT_DEFAULT_USER_ID > 0
+    ? ASSIGNMENT_DEFAULT_USER_ID
+    : 1;
 let ensureAuthSchemaPromise;
 
 app.use(
@@ -74,6 +80,15 @@ function getRequestUserId(req) {
   return null;
 }
 
+function getAuthenticatedUserId(req) {
+  const authUserId = Number(req.auth?.userId);
+  if (Number.isInteger(authUserId) && authUserId > 0) {
+    return authUserId;
+  }
+
+  return null;
+}
+
 function parsePositiveInt(value) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
@@ -88,8 +103,28 @@ function isAdminUserId(userId) {
   return (
     Number.isInteger(parsedUserId) &&
     parsedUserId > 0 &&
-    parsedUserId === ASSIGNMENT_DEFAULT_USER_ID
+    parsedUserId === HARD_CODED_ADMIN_USER_ID
   );
+}
+
+function requireAdmin(req, res, next) {
+  if (!isAdminUserId(req.userId)) {
+    return res.status(403).json({ message: "Admin access required" });
+  }
+
+  return next();
+}
+
+async function cleanupExpiredMeetings() {
+  try {
+    await query(
+      `DELETE FROM bookings
+       WHERE status = 'confirmed'
+         AND end_time < UTC_TIMESTAMP()`
+    );
+  } catch (error) {
+    console.error("Expired meeting cleanup failed", error);
+  }
 }
 
 async function getUserById(userId) {
@@ -313,6 +348,24 @@ app.post("/api/auth/email-signin", async (req, res) => {
 
   const email = parsed.data.email.toLowerCase();
 
+  if (
+    email === HARD_CODED_ADMIN_EMAIL &&
+    parsed.data.password === HARD_CODED_ADMIN_PASSWORD
+  ) {
+    const adminRows = await query(
+      "SELECT id, name, email FROM users WHERE id = ?",
+      [HARD_CODED_ADMIN_USER_ID]
+    );
+
+    const adminUser = adminRows[0];
+    if (!adminUser) {
+      return res.status(500).json({ message: "Admin account is not initialized" });
+    }
+
+    setAuthCookie(res, { id: adminUser.id, email: adminUser.email });
+    return res.json({ user: adminUser });
+  }
+
   const users = await query(
     "SELECT id, name, email, password_hash AS passwordHash FROM users WHERE email = ?",
     [email]
@@ -381,11 +434,12 @@ app.post("/api/auth/google", async (req, res) => {
 });
 
 app.get("/api/auth/me", async (req, res) => {
-  if (!req.userId) {
+  const authenticatedUserId = getAuthenticatedUserId(req);
+  if (!authenticatedUserId) {
     return res.status(401).json({ message: "Not authenticated" });
   }
 
-  const user = await getUserById(Number(req.userId));
+  const user = await getUserById(authenticatedUserId);
   if (!user) {
     return res.status(401).json({ message: "User not found" });
   }
@@ -537,8 +591,10 @@ app.post("/api/auth/logout", (_req, res) => {
 
 app.use("/api/event-types", requireAuth);
 app.use("/api/event-types", requireVerifiedEmail);
+app.use("/api/event-types", requireAdmin);
 app.use("/api/availability", requireAuth);
 app.use("/api/availability", requireVerifiedEmail);
+app.use("/api/availability", requireAdmin);
 app.use("/api/bookings", requireAuth);
 app.use("/api/bookings", requireVerifiedEmail);
 
@@ -815,6 +871,8 @@ app.get("/api/public/:slug", async (req, res) => {
 });
 
 app.get("/api/public/:slug/slots", async (req, res) => {
+  await cleanupExpiredMeetings();
+
   const date = req.query.date;
   if (!date) {
     return res.status(400).json({ message: "date is required (YYYY-MM-DD)" });
@@ -1009,6 +1067,8 @@ app.get("/api/public/bookings/:id", async (req, res) => {
 });
 
 app.get("/api/bookings", async (req, res) => {
+  await cleanupExpiredMeetings();
+
   const user = await getUserById(Number(req.userId));
   if (!user) {
     return res.status(401).json({ message: "Not authenticated" });
@@ -1051,6 +1111,8 @@ app.get("/api/bookings", async (req, res) => {
 });
 
 app.post("/api/bookings/:id/cancel", async (req, res) => {
+  await cleanupExpiredMeetings();
+
   const bookingId = parsePositiveInt(req.params.id);
   if (!bookingId) {
     return res.status(400).json({ message: "Invalid booking id" });
@@ -1062,23 +1124,17 @@ app.post("/api/bookings/:id/cancel", async (req, res) => {
   }
 
   const isAdmin = isAdminUserId(user.id);
+  if (!isAdmin) {
+    return res.status(403).json({ message: "Admin access required" });
+  }
 
-  const result = isAdmin
-    ? await query(
-        `UPDATE bookings b
-         JOIN event_types e ON e.id = b.event_type_id
-         SET status = 'cancelled', cancelled_at = UTC_TIMESTAMP()
-         WHERE b.id = ? AND b.status = 'confirmed' AND e.user_id = ?`,
-        [bookingId, user.id]
-      )
-    : await query(
-        `UPDATE bookings b
-         SET status = 'cancelled', cancelled_at = UTC_TIMESTAMP()
-         WHERE b.id = ?
-           AND b.status = 'confirmed'
-           AND LOWER(b.booker_email) = LOWER(?)`,
-        [bookingId, user.email]
-      );
+  const result = await query(
+    `UPDATE bookings b
+     JOIN event_types e ON e.id = b.event_type_id
+     SET status = 'cancelled', cancelled_at = UTC_TIMESTAMP()
+     WHERE b.id = ? AND b.status = 'confirmed' AND e.user_id = ?`,
+    [bookingId, user.id]
+  );
 
   if (result.affectedRows === 0) {
     return res.status(404).json({ message: "Booking not found or already cancelled" });

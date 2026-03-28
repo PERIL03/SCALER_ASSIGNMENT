@@ -23,11 +23,38 @@ function runSeed() {
 async function getAuthenticatedAgent() {
   const agent = request.agent(app);
   const signInResponse = await agent.post("/api/auth/email-signin").send({
-    email: "default@calclone.dev",
-    password: "password123",
+    email: "admin@calclone.dev",
+    password: "Admin@1234",
   });
 
   assert.equal(signInResponse.status, 200);
+  return agent;
+}
+
+async function signUpAndSignInUser(email) {
+  const agent = request.agent(app);
+
+  const signupResponse = await agent.post("/api/auth/email-signup").send({
+    name: "Normal User",
+    email,
+    password: "Pass@1234",
+  });
+  assert.equal(signupResponse.status, 201);
+
+  const verifyToken = signupResponse.body.devVerificationToken;
+  assert.ok(verifyToken);
+
+  const verifyResponse = await agent.post("/api/auth/verify-email").send({
+    token: verifyToken,
+  });
+  assert.equal(verifyResponse.status, 200);
+
+  const signinResponse = await agent.post("/api/auth/email-signin").send({
+    email,
+    password: "Pass@1234",
+  });
+  assert.equal(signinResponse.status, 200);
+
   return agent;
 }
 
@@ -122,7 +149,7 @@ test("public booking flow prevents double booking and supports cancellation", as
       startTimeUTC: selectedSlot.startTimeUTC,
       bookerName: "Integration Test User",
       // Use the signed-in user's email so non-admin visibility rules include this booking.
-      bookerEmail: "default@calclone.dev",
+      bookerEmail: "admin@calclone.dev",
     });
 
   assert.equal(createBookingResponse.status, 201);
@@ -182,4 +209,82 @@ test("private API access follows configured mode", async () => {
   assert.equal(eventsResponse.status, 401);
   assert.equal(availabilityResponse.status, 401);
   assert.equal(bookingsResponse.status, 401);
+});
+
+test("normal user cannot manage meetings and can only view own bookings", async () => {
+  const adminAgent = await getAuthenticatedAgent();
+
+  const userEmail = `member-${Date.now()}@example.com`;
+  const userAgent = await signUpAndSignInUser(userEmail);
+
+  const eventTypesResponse = await userAgent.get("/api/event-types");
+  assert.equal(eventTypesResponse.status, 403);
+
+  const availabilityResponse = await userAgent.get("/api/availability");
+  assert.equal(availabilityResponse.status, 403);
+
+  const { slots } = await findDateWithSlots("intro-call");
+  const selectedSlot = slots[0];
+
+  const userBookingResponse = await request(app)
+    .post("/api/public/intro-call/book")
+    .send({
+      startTimeUTC: selectedSlot.startTimeUTC,
+      bookerName: "Normal User",
+      bookerEmail: userEmail,
+    });
+
+  assert.equal(userBookingResponse.status, 201);
+
+  const ownBookingsResponse = await userAgent.get("/api/bookings");
+  assert.equal(ownBookingsResponse.status, 200);
+  assert.ok(ownBookingsResponse.body.some((booking) => booking.id === userBookingResponse.body.bookingId));
+
+  const hasOtherUserBookings = ownBookingsResponse.body.some(
+    (booking) => String(booking.bookerEmail).toLowerCase() !== userEmail.toLowerCase()
+  );
+  assert.equal(hasOtherUserBookings, false);
+
+  const userCancelResponse = await userAgent.post(
+    `/api/bookings/${userBookingResponse.body.bookingId}/cancel`
+  );
+  assert.equal(userCancelResponse.status, 403);
+
+  const adminCancelResponse = await adminAgent.post(
+    `/api/bookings/${userBookingResponse.body.bookingId}/cancel`
+  );
+  assert.equal(adminCancelResponse.status, 200);
+});
+
+test("expired meetings are removed automatically", async () => {
+  const agent = await getAuthenticatedAgent();
+
+  const eventTypesResponse = await agent.get("/api/event-types");
+  assert.equal(eventTypesResponse.status, 200);
+  const introCall = eventTypesResponse.body.find((eventType) => eventType.slug === "intro-call");
+  assert.ok(introCall);
+
+  const pastStart = DateTime.utc().minus({ hours: 2 }).toFormat("yyyy-LL-dd HH:mm:ss");
+  const pastEnd = DateTime.utc().minus({ hours: 1 }).toFormat("yyyy-LL-dd HH:mm:ss");
+
+  await pool.query(
+    `INSERT INTO bookings (event_type_id, booker_name, booker_email, start_time, end_time, status)
+     VALUES (?, 'Expired User', 'expired@example.com', ?, ?, 'confirmed')`,
+    [introCall.id, pastStart, pastEnd]
+  );
+
+  const beforeCleanup = await pool.query(
+    `SELECT COUNT(*) AS total FROM bookings
+     WHERE booker_email = 'expired@example.com'`
+  );
+  assert.equal(beforeCleanup[0][0].total, 1);
+
+  const cleanupTriggerResponse = await agent.get("/api/bookings");
+  assert.equal(cleanupTriggerResponse.status, 200);
+
+  const afterCleanup = await pool.query(
+    `SELECT COUNT(*) AS total FROM bookings
+     WHERE booker_email = 'expired@example.com'`
+  );
+  assert.equal(afterCleanup[0][0].total, 0);
 });

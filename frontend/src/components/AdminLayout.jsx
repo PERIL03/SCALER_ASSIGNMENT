@@ -111,6 +111,9 @@ export default function AdminLayout({ children }) {
           <span className="topbar-tag">Personal Workspace</span>
         </div>
         <div className="topbar-right">
+          <Link className="topbar-switch-link" href="/book/intro-call">
+            Switch to user view
+          </Link>
           <Link className="topbar-new-btn" href="/dashboard">
             + New event
           </Link>

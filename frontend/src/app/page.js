@@ -6,7 +6,7 @@ const NAV_LINKS = [
   { label: "Event Types", href: "/dashboard" },
   { label: "Availability", href: "/availability" },
   { label: "Bookings", href: "/bookings" },
-  { label: "Public Booking", href: "/book/intro-call" },
+  { label: "User Booking Page", href: "/book/intro-call" },
 ];
 const PARTNERS = ["vercel", "supabase", "udemy", "rho", "deel", "framer", "ramp"];
 const PARTNER_TICKER = [...PARTNERS, ...PARTNERS];
@@ -61,6 +61,9 @@ export default function LandingPage() {
             ))}
           </nav>
           <div className="calx-nav-actions">
+            <Link href="/dashboard" className="topbar-switch-link">
+              Switch to admin panel
+            </Link>
             <GoogleAuthControls compact />
           </div>
         </header>

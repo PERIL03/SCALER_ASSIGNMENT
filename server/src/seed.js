@@ -14,6 +14,11 @@ function hashPassword(password) {
   return `scrypt$${salt}$${digest}`;
 }
 
+const ADMIN_USER_ID = 1;
+const ADMIN_NAME = "Admin";
+const ADMIN_EMAIL = "admin@calclone.dev";
+const ADMIN_PASSWORD = "Admin@1234";
+
 async function runSeed() {
   try {
     const schemaPath = path.join(__dirname, "..", "sql", "schema.sql");
@@ -63,7 +68,7 @@ async function runSeed() {
       }
     }
 
-    const defaultPasswordHash = hashPassword("password123");
+    const defaultPasswordHash = hashPassword(ADMIN_PASSWORD);
 
     await query(
       `INSERT INTO users (
@@ -72,7 +77,7 @@ async function runSeed() {
          password_reset_token_hash, password_reset_expires_at,
          onboarding_completed
        )
-       VALUES (1, 'Default User', 'default@calclone.dev', ?, 1, NULL, NULL, NULL, 1)
+       VALUES (?, ?, ?, ?, 1, NULL, NULL, NULL, 1)
        ON DUPLICATE KEY UPDATE
          name = VALUES(name),
          email = VALUES(email),
@@ -82,14 +87,14 @@ async function runSeed() {
          password_reset_token_hash = VALUES(password_reset_token_hash),
          password_reset_expires_at = VALUES(password_reset_expires_at),
          onboarding_completed = VALUES(onboarding_completed)`,
-      [defaultPasswordHash]
+      [ADMIN_USER_ID, ADMIN_NAME, ADMIN_EMAIL, defaultPasswordHash]
     );
 
     await query(
       `INSERT INTO user_preferences (user_id, timezone)
-       VALUES (1, ?)
+       VALUES (?, ?)
        ON DUPLICATE KEY UPDATE timezone = VALUES(timezone)`,
-      [process.env.DEFAULT_TIMEZONE || "Asia/Kolkata"]
+      [ADMIN_USER_ID, process.env.DEFAULT_TIMEZONE || "Asia/Kolkata"]
     );
 
     await query("DELETE FROM bookings");

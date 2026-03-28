@@ -13,6 +13,9 @@ const INITIAL_FORM = {
   confirmPassword: "",
 };
 
+const ADMIN_EMAIL = "admin@calclone.dev";
+const ADMIN_PASSWORD = "Admin@1234";
+
 function getPasswordChecks(password) {
   return [
     { label: "At least 8 characters", passed: password.length >= 8 },
@@ -133,6 +136,23 @@ export default function EmailAuthForm({ redirectTo = "/dashboard" }) {
         </button>
       </div>
 
+      {!isSignup ? (
+        <button
+          type="button"
+          className="admin-quickfill-btn"
+          onClick={() => {
+            setForm((prev) => ({
+              ...prev,
+              email: ADMIN_EMAIL,
+              password: ADMIN_PASSWORD,
+            }));
+            setError("");
+          }}
+        >
+          Use admin credentials
+        </button>
+      ) : null}
+
       <div className="signup-form-grid">
         {isSignup ? (
           <label>
@@ -247,7 +267,7 @@ export default function EmailAuthForm({ redirectTo = "/dashboard" }) {
       <p className="signup-inline-note">
         {isSignup
           ? "Prefer not to use Google? You can sign up fully with email and password."
-          : "Use the email and password you created during sign up."}
+          : `Use the email and password you created during sign up. Admin: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`}
       </p>
 
       {!isSignup ? (
