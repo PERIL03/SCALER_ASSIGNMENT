@@ -71,11 +71,18 @@ Environment variables:
 - `GOOGLE_CLIENT_ID=<google-oauth-web-client-id>`
 - `ASSIGNMENT_MODE=true`
 - `ASSIGNMENT_DEFAULT_USER_ID=1`
+- `RUN_SEED_ON_STARTUP=false`
 
-After first deploy, run seed once:
+If your plan supports **Pre-Deploy Command**, set:
 ```bash
 npm run seed
 ```
+
+If Pre-Deploy Command is locked (free tier), use this fallback:
+
+1. Set `RUN_SEED_ON_STARTUP=true` for one deploy.
+2. Deploy once so seed runs automatically at container startup.
+3. Set `RUN_SEED_ON_STARTUP=false` and deploy again (to avoid reseeding on every restart).
 
 Health check endpoint:
 - `GET /api/health`

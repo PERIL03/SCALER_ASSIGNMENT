@@ -10,4 +10,4 @@ COPY . .
 ENV NODE_ENV=production
 EXPOSE 4000
 
-CMD ["npm", "start"]
+CMD ["sh", "-c", "if [ \"$RUN_SEED_ON_STARTUP\" = \"true\" ]; then npm run seed; fi; npm start"]

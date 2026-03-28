@@ -74,14 +74,6 @@ function getRequestUserId(req) {
   return null;
 }
 
-function requireAuth(req, res, next) {
-  if (!req.userId) {
-    return res.status(401).json({ message: "Not authenticated" });
-  }
-
-  return next();
-}
-
 function parsePositiveInt(value) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
@@ -215,6 +207,14 @@ function ensureAuthSchema() {
   }
 
   return ensureAuthSchemaPromise;
+}
+
+function requireAuth(req, res, next) {
+  if (!req.userId) {
+    return res.status(401).json({ message: "Not authenticated" });
+  }
+
+  return next();
 }
 
 async function requireVerifiedEmail(req, res, next) {
