@@ -145,15 +145,25 @@ function verifyPassword(password, encodedHash) {
   return timingSafeEqual(expectedBuffer, actualBuffer);
 }
 
+function getAuthCookieOptions() {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  // Frontend and backend run on different domains in production.
+  // Cross-site auth cookies require SameSite=None and Secure=true.
+  return {
+    httpOnly: true,
+    sameSite: isProduction ? "none" : "lax",
+    secure: isProduction,
+  };
+}
+
 function setAuthCookie(res, user) {
   const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, {
     expiresIn: "7d",
   });
 
   res.cookie(AUTH_COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    ...getAuthCookieOptions(),
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 }
@@ -510,9 +520,7 @@ app.post("/api/auth/reset-password", async (req, res) => {
 
 app.post("/api/auth/logout", (_req, res) => {
   res.clearCookie(AUTH_COOKIE_NAME, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    ...getAuthCookieOptions(),
   });
 
   return res.json({ message: "Logged out" });
