@@ -1,0 +1,9 @@
+client/node_modules
+server/node_modules
+frontend/node_modules
+client/dist
+frontend/.next
+.env
+server/.env
+frontend/.env
+.DS_Store
