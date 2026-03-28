@@ -41,7 +41,7 @@ export default async function SignUpPage({ searchParams }) {
           ) : null}
 
           <div className="signup-auth-row">
-            <GoogleAuthControls redirectTo={redirectTo} />
+            <GoogleAuthControls redirectTo={redirectTo} requireAdmin={forceAdminAuth} />
           </div>
 
           <div className="signup-divider" role="separator" aria-label="or" />

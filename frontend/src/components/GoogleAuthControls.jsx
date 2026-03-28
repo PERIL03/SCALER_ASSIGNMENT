@@ -13,7 +13,11 @@ function getInitial(nameOrEmail) {
   return String(nameOrEmail).trim().charAt(0).toUpperCase();
 }
 
-export default function GoogleAuthControls({ compact = false, redirectTo = "/dashboard" }) {
+export default function GoogleAuthControls({
+  compact = false,
+  redirectTo = "/dashboard",
+  requireAdmin = false,
+}) {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [readyForButton, setReadyForButton] = useState(false);
@@ -28,8 +32,25 @@ export default function GoogleAuthControls({ compact = false, redirectTo = "/das
 
       try {
         setError("");
-        const data = await api.googleSignIn(credential);
-        setUser(data.user);
+        await api.googleSignIn(credential);
+
+        let currentUser = null;
+        try {
+          const me = await api.getCurrentUser();
+          currentUser = me.user || null;
+        } catch {
+          // If auth/me fails here, fallback redirect below remains unchanged.
+        }
+
+        if (currentUser) {
+          setUser(currentUser);
+          if (requireAdmin && !currentUser.isAdmin) {
+            router.push("/book/intro-call?notice=admin-only");
+            router.refresh();
+            return;
+          }
+        }
+
         router.push(redirectTo);
         router.refresh();
       } catch (err) {
@@ -39,7 +60,7 @@ export default function GoogleAuthControls({ compact = false, redirectTo = "/das
 
     window.addEventListener(CREDENTIAL_EVENT, handleCredential);
     return () => window.removeEventListener(CREDENTIAL_EVENT, handleCredential);
-  }, [redirectTo, router]);
+  }, [redirectTo, requireAdmin, router]);
 
   useEffect(() => {
     let cancelled = false;
