@@ -32,7 +32,11 @@ function getPasswordStrength(score) {
   return { label: "Strong", className: "password-strength-strong" };
 }
 
-export default function EmailAuthForm({ redirectTo = "/", initialMode = "signup" }) {
+export default function EmailAuthForm({
+  redirectTo = "/",
+  initialMode = "signup",
+  requireAdmin = false,
+}) {
   const router = useRouter();
   const [mode, setMode] = useState(initialMode === "signin" ? "signin" : "signup");
   const [form, setForm] = useState(INITIAL_FORM);
@@ -82,6 +86,12 @@ export default function EmailAuthForm({ redirectTo = "/", initialMode = "signup"
           const data = await api.getCurrentUser();
           if (!data.user?.emailVerified) {
             router.push(`/verify-email?next=${encodeURIComponent(redirectTo)}`);
+            router.refresh();
+            return;
+          }
+
+          if (requireAdmin && !data.user?.isAdmin) {
+            router.push("/book/intro-call?notice=admin-only");
             router.refresh();
             return;
           }
@@ -136,7 +146,7 @@ export default function EmailAuthForm({ redirectTo = "/", initialMode = "signup"
         </button>
       </div>
 
-      {!isSignup ? (
+      {!isSignup && requireAdmin ? (
         <button
           type="button"
           className="admin-quickfill-btn"
@@ -267,7 +277,9 @@ export default function EmailAuthForm({ redirectTo = "/", initialMode = "signup"
       <p className="signup-inline-note">
         {isSignup
           ? "Prefer not to use Google? You can sign up fully with email and password."
-          : `Use the email and password you created during sign up. Admin: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`}
+          : requireAdmin
+            ? `Admin panel access requires admin credentials. Admin: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`
+            : "Use the email and password you created during sign up."}
       </p>
 
       {!isSignup ? (

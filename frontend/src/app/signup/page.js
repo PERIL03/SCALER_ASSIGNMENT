@@ -48,7 +48,11 @@ export default async function SignUpPage({ searchParams }) {
 
           <section className="signup-email-block" aria-label="Email sign up form">
             <h2>Email and password access</h2>
-            <EmailAuthForm redirectTo={redirectTo} initialMode={requestedMode} />
+            <EmailAuthForm
+              redirectTo={redirectTo}
+              initialMode={requestedMode}
+              requireAdmin={forceAdminAuth}
+            />
           </section>
 
           <div className="signup-links">
