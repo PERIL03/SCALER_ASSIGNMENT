@@ -281,3 +281,25 @@ test("expired meetings are removed automatically", async () => {
   );
   assert.equal(afterCleanup[0][0].total, 0);
 });
+
+test("normal user cannot view another user's booking confirmation", async () => {
+  const adminAgent = await getAuthenticatedAgent();
+  const userEmail = `viewer-${Date.now()}@example.com`;
+  const userAgent = await signUpAndSignInUser(userEmail);
+
+  const { slots } = await findDateWithSlots("intro-call", adminAgent);
+  const selectedSlot = slots[0];
+
+  const adminBookingResponse = await adminAgent.post("/api/public/intro-call/book").send({
+    startTimeUTC: selectedSlot.startTimeUTC,
+    bookerName: "Admin User",
+  });
+
+  assert.equal(adminBookingResponse.status, 201);
+
+  const foreignBookingResponse = await userAgent.get(
+    `/api/public/bookings/${adminBookingResponse.body.bookingId}`
+  );
+
+  assert.equal(foreignBookingResponse.status, 404);
+});

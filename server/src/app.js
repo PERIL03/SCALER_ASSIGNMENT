@@ -439,7 +439,12 @@ app.get("/api/auth/me", async (req, res) => {
     return res.status(401).json({ message: "User not found" });
   }
 
-  return res.json({ user });
+  return res.json({
+    user: {
+      ...user,
+      isAdmin: isAdminUserId(user.id),
+    },
+  });
 });
 
 app.post("/api/auth/send-verification", async (req, res) => {
@@ -1047,6 +1052,12 @@ app.get("/api/public/bookings/:id", async (req, res) => {
   if (!bookingId) {
     return res.status(400).json({ message: "Invalid booking id" });
   }
+
+  const user = await getUserById(Number(req.userId));
+  if (!user) {
+    return res.status(401).json({ message: "Not authenticated" });
+  }
+
   const rows = await query(
     `SELECT b.id, b.booker_name AS bookerName, b.booker_email AS bookerEmail,
             b.start_time AS startTime, b.end_time AS endTime, b.status,
@@ -1064,6 +1075,12 @@ app.get("/api/public/bookings/:id", async (req, res) => {
   }
 
   const booking = rows[0];
+  const isAdmin = isAdminUserId(user.id);
+  const isOwner = String(booking.bookerEmail || "").toLowerCase() === String(user.email || "").toLowerCase();
+  if (!isAdmin && !isOwner) {
+    return res.status(404).json({ message: "Booking not found" });
+  }
+
   res.json({
     ...booking,
     startTime: sqlDateTimeToIso(booking.startTime),

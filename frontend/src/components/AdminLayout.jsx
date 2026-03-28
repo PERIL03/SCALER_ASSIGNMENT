@@ -8,7 +8,6 @@ import GoogleAuthControls from "@/components/GoogleAuthControls";
 import { api } from "@/lib/api";
 
 const ASSIGNMENT_MODE = process.env.NEXT_PUBLIC_ASSIGNMENT_MODE === "true";
-const ADMIN_EMAIL = "admin@calclone.dev";
 
 const navItems = [
   {
@@ -71,7 +70,7 @@ export default function AdminLayout({ children }) {
           return;
         }
 
-        if (String(data.user?.email || "").toLowerCase() !== ADMIN_EMAIL) {
+        if (!data.user?.isAdmin) {
           const adminLoginUrl = `/signup?next=${encodeURIComponent(pathname)}&admin=1&mode=signin`;
           router.replace(adminLoginUrl);
           return;
