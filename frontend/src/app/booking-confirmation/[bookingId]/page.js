@@ -3,13 +3,15 @@
 import { useEffect, useState } from "react";
 import { DateTime } from "luxon";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
 export default function BookingConfirmationPage() {
   const { bookingId } = useParams();
+  const router = useRouter();
   const [booking, setBooking] = useState(null);
   const [error, setError] = useState("");
+  const [secondsLeft, setSecondsLeft] = useState(8);
 
   useEffect(() => {
     if (!bookingId) return;
@@ -19,6 +21,23 @@ export default function BookingConfirmationPage() {
       .then((data) => setBooking(data))
       .catch((err) => setError(err.message));
   }, [bookingId]);
+
+  useEffect(() => {
+    if (!booking) return;
+
+    const tickTimer = setInterval(() => {
+      setSecondsLeft((current) => (current > 0 ? current - 1 : 0));
+    }, 1000);
+
+    const redirectTimer = setTimeout(() => {
+      router.replace("/");
+    }, 8000);
+
+    return () => {
+      clearInterval(tickTimer);
+      clearTimeout(redirectTimer);
+    };
+  }, [booking, router]);
 
   if (error) {
     return <p className="error-text">{error}</p>;
@@ -49,7 +68,10 @@ export default function BookingConfirmationPage() {
           .toLocaleString(DateTime.DATETIME_FULL)}
       </p>
 
+      <p className="page-subtitle">Redirecting to home in {secondsLeft}s...</p>
+
       <Link href={`/book/${booking.slug}`}>Book another time</Link>
+      <Link href="/">Go to home now</Link>
     </section>
   );
 }

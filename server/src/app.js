@@ -20,7 +20,7 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:3000";
 const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 const PASSWORD_HASH_PREFIX = "scrypt";
 const ASSIGNMENT_MODE = process.env.ASSIGNMENT_MODE !== "false";
-const ASSIGNMENT_DEFAULT_USER_ID = Number(process.env.ASSIGNMENT_DEFAULT_USER_ID || 1);
+const ASSIGNMENT_DEFAULT_USER_ID = Number(process.env.ASSIGNMENT_DEFAULT_USER_ID || 0);
 let ensureAuthSchemaPromise;
 
 app.use(
@@ -81,6 +81,15 @@ function parsePositiveInt(value) {
 
 function parseScope(value) {
   return value === "past" ? "past" : "upcoming";
+}
+
+function isAdminUserId(userId) {
+  const parsedUserId = Number(userId);
+  return (
+    Number.isInteger(parsedUserId) &&
+    parsedUserId > 0 &&
+    parsedUserId === ASSIGNMENT_DEFAULT_USER_ID
+  );
 }
 
 async function getUserById(userId) {
@@ -1000,19 +1009,37 @@ app.get("/api/public/bookings/:id", async (req, res) => {
 });
 
 app.get("/api/bookings", async (req, res) => {
+  const user = await getUserById(Number(req.userId));
+  if (!user) {
+    return res.status(401).json({ message: "Not authenticated" });
+  }
+
+  const isAdmin = isAdminUserId(user.id);
   const scope = parseScope(req.query.scope);
   const operator = scope === "past" ? "<" : ">=";
 
-  const rows = await query(
-    `SELECT b.id, b.booker_name AS bookerName, b.booker_email AS bookerEmail,
-            b.start_time AS startTime, b.end_time AS endTime, b.status,
-            e.title AS eventTitle, e.slug
-     FROM bookings b
-     JOIN event_types e ON e.id = b.event_type_id
-     WHERE e.user_id = ? AND b.start_time ${operator} UTC_TIMESTAMP()
-     ORDER BY b.start_time ASC`,
-    [req.userId]
-  );
+  const rows = isAdmin
+    ? await query(
+        `SELECT b.id, b.booker_name AS bookerName, b.booker_email AS bookerEmail,
+                b.start_time AS startTime, b.end_time AS endTime, b.status,
+                e.title AS eventTitle, e.slug
+         FROM bookings b
+         JOIN event_types e ON e.id = b.event_type_id
+         WHERE e.user_id = ? AND b.start_time ${operator} UTC_TIMESTAMP()
+         ORDER BY b.start_time ASC`,
+        [user.id]
+      )
+    : await query(
+        `SELECT b.id, b.booker_name AS bookerName, b.booker_email AS bookerEmail,
+                b.start_time AS startTime, b.end_time AS endTime, b.status,
+                e.title AS eventTitle, e.slug
+         FROM bookings b
+         JOIN event_types e ON e.id = b.event_type_id
+         WHERE LOWER(b.booker_email) = LOWER(?)
+           AND b.start_time ${operator} UTC_TIMESTAMP()
+         ORDER BY b.start_time ASC`,
+        [user.email]
+      );
 
   const normalizedRows = rows.map((row) => ({
     ...row,
@@ -1028,13 +1055,30 @@ app.post("/api/bookings/:id/cancel", async (req, res) => {
   if (!bookingId) {
     return res.status(400).json({ message: "Invalid booking id" });
   }
-  const result = await query(
-    `UPDATE bookings b
-     JOIN event_types e ON e.id = b.event_type_id
-     SET status = 'cancelled', cancelled_at = UTC_TIMESTAMP()
-     WHERE b.id = ? AND b.status = 'confirmed' AND e.user_id = ?`,
-    [bookingId, req.userId]
-  );
+
+  const user = await getUserById(Number(req.userId));
+  if (!user) {
+    return res.status(401).json({ message: "Not authenticated" });
+  }
+
+  const isAdmin = isAdminUserId(user.id);
+
+  const result = isAdmin
+    ? await query(
+        `UPDATE bookings b
+         JOIN event_types e ON e.id = b.event_type_id
+         SET status = 'cancelled', cancelled_at = UTC_TIMESTAMP()
+         WHERE b.id = ? AND b.status = 'confirmed' AND e.user_id = ?`,
+        [bookingId, user.id]
+      )
+    : await query(
+        `UPDATE bookings b
+         SET status = 'cancelled', cancelled_at = UTC_TIMESTAMP()
+         WHERE b.id = ?
+           AND b.status = 'confirmed'
+           AND LOWER(b.booker_email) = LOWER(?)`,
+        [bookingId, user.email]
+      );
 
   if (result.affectedRows === 0) {
     return res.status(404).json({ message: "Booking not found or already cancelled" });

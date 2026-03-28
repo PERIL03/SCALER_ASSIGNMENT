@@ -1,9 +1,6 @@
 const RAW_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-const DEFAULT_API_BASE_URL =
-  process.env.NODE_ENV === "production"
-    ? "https://scaler-assignment-1-iil4.onrender.com"
-    : "http://localhost:4000";
+const DEFAULT_API_BASE_URL = "http://localhost:4000";
 
 const API_BASE_URL = (RAW_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, "");
 

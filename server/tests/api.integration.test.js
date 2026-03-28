@@ -8,6 +8,8 @@ const request = require("supertest");
 const app = require("../src/app");
 const { pool } = require("../src/db");
 const isAssignmentMode = process.env.ASSIGNMENT_MODE !== "false";
+const assignmentDefaultUserId = Number(process.env.ASSIGNMENT_DEFAULT_USER_ID || 0);
+const hasAssignmentFallbackUser = Number.isInteger(assignmentDefaultUserId) && assignmentDefaultUserId > 0;
 
 const serverRoot = path.join(__dirname, "..");
 
@@ -119,7 +121,8 @@ test("public booking flow prevents double booking and supports cancellation", as
     .send({
       startTimeUTC: selectedSlot.startTimeUTC,
       bookerName: "Integration Test User",
-      bookerEmail: "integration@example.com",
+      // Use the signed-in user's email so non-admin visibility rules include this booking.
+      bookerEmail: "default@calclone.dev",
     });
 
   assert.equal(createBookingResponse.status, 201);
@@ -169,9 +172,10 @@ test("private API access follows configured mode", async () => {
   ]);
 
   if (isAssignmentMode) {
-    assert.equal(eventsResponse.status, 200);
-    assert.equal(availabilityResponse.status, 200);
-    assert.equal(bookingsResponse.status, 200);
+    const expectedStatus = hasAssignmentFallbackUser ? 200 : 401;
+    assert.equal(eventsResponse.status, expectedStatus);
+    assert.equal(availabilityResponse.status, expectedStatus);
+    assert.equal(bookingsResponse.status, expectedStatus);
     return;
   }
 
