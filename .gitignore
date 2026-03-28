@@ -7,3 +7,4 @@ frontend/.next
 server/.env
 frontend/.env
 .DS_Store
+.vercel
