@@ -61,7 +61,7 @@ export default function LandingPage() {
             ))}
           </nav>
           <div className="calx-nav-actions">
-            <Link href="/signup?next=%2Fdashboard&admin=1&mode=signin" className="topbar-switch-link">
+            <Link href="/dashboard" className="topbar-switch-link">
               Switch to admin panel
             </Link>
             <GoogleAuthControls compact />

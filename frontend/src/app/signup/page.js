@@ -8,12 +8,12 @@ export const metadata = {
 
 function getSafeRedirectPath(rawNext) {
   if (typeof rawNext !== "string") {
-    return "/dashboard";
+    return "/";
   }
 
   const trimmed = rawNext.trim();
   if (!trimmed.startsWith("/") || trimmed.startsWith("//")) {
-    return "/dashboard";
+    return "/";
   }
 
   return trimmed;
