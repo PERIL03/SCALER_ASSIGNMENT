@@ -7,7 +7,6 @@ import { getAuthErrorMessage } from "@/lib/authFeedback";
 
 const GOOGLE_SCRIPT_SRC = "https://accounts.google.com/gsi/client";
 const CREDENTIAL_EVENT = "cal-google-credential";
-const ASSIGNMENT_MODE = process.env.NEXT_PUBLIC_ASSIGNMENT_MODE !== "false";
 
 function getInitial(nameOrEmail) {
   if (!nameOrEmail) return "U";
@@ -23,10 +22,6 @@ export default function GoogleAuthControls({ compact = false, redirectTo = "/das
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
-    if (ASSIGNMENT_MODE) {
-      return;
-    }
-
     async function handleCredential(event) {
       const credential = event?.detail?.credential;
       if (!credential) return;
@@ -47,12 +42,6 @@ export default function GoogleAuthControls({ compact = false, redirectTo = "/das
   }, [redirectTo, router]);
 
   useEffect(() => {
-    if (ASSIGNMENT_MODE) {
-      setReadyForButton(false);
-      setUser(null);
-      return;
-    }
-
     let cancelled = false;
 
     async function loadCurrentUser() {
@@ -79,10 +68,6 @@ export default function GoogleAuthControls({ compact = false, redirectTo = "/das
   }, []);
 
   useEffect(() => {
-    if (ASSIGNMENT_MODE) {
-      return;
-    }
-
     if (!readyForButton || user || !clientId || !buttonContainerRef.current) {
       return;
     }
@@ -144,10 +129,6 @@ export default function GoogleAuthControls({ compact = false, redirectTo = "/das
     } catch (err) {
       setError(getAuthErrorMessage(err, "Could not log out. Please try again."));
     }
-  }
-
-  if (ASSIGNMENT_MODE) {
-    return null;
   }
 
   if (!clientId) {

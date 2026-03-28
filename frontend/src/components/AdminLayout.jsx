@@ -114,7 +114,7 @@ export default function AdminLayout({ children }) {
           <Link className="topbar-new-btn" href="/dashboard">
             + New event
           </Link>
-          {!ASSIGNMENT_MODE ? <GoogleAuthControls compact /> : null}
+          <GoogleAuthControls compact />
         </div>
       </header>
 
