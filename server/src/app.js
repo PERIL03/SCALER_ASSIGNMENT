@@ -28,9 +28,45 @@ const HARD_CODED_ADMIN_USER_ID =
     : 1;
 let ensureAuthSchemaPromise;
 
+const LOCAL_ALLOWED_ORIGINS = new Set([
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+]);
+
+const CONFIGURED_CORS_ORIGINS = new Set(
+  String(CORS_ORIGIN)
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+);
+
+function isAllowedCorsOrigin(origin) {
+  if (!origin) {
+    // Non-browser requests (curl, server-to-server) don't send an Origin header.
+    return true;
+  }
+
+  if (LOCAL_ALLOWED_ORIGINS.has(origin) || CONFIGURED_CORS_ORIGINS.has(origin)) {
+    return true;
+  }
+
+  try {
+    const parsed = new URL(origin);
+    return parsed.protocol === "https:" && parsed.hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+}
+
 app.use(
   cors({
-    origin: CORS_ORIGIN,
+    origin(origin, callback) {
+      if (isAllowedCorsOrigin(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Origin not allowed by CORS"));
+    },
     credentials: true,
   })
 );

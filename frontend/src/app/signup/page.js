@@ -1,6 +1,7 @@
 import Link from "next/link";
 import GoogleAuthControls from "@/components/GoogleAuthControls";
 import EmailAuthForm from "@/components/EmailAuthForm";
+import AdminLoginRedirectGuard from "@/components/AdminLoginRedirectGuard";
 
 export const metadata = {
   title: "Sign Up | cal.com Scheduler",
@@ -27,6 +28,7 @@ export default async function SignUpPage({ searchParams }) {
 
   return (
     <div className="signup-shell">
+      <AdminLoginRedirectGuard forceAdminAuth={forceAdminAuth} redirectTo={redirectTo} />
       <div className="signup-grid" aria-hidden="true" />
       <main className="signup-main">
         <section className="signup-card card">
