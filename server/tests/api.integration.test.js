@@ -7,9 +7,6 @@ const request = require("supertest");
 
 const app = require("../src/app");
 const { pool } = require("../src/db");
-const isAssignmentMode = process.env.ASSIGNMENT_MODE !== "false";
-const assignmentDefaultUserId = Number(process.env.ASSIGNMENT_DEFAULT_USER_ID || 0);
-const hasAssignmentFallbackUser = Number.isInteger(assignmentDefaultUserId) && assignmentDefaultUserId > 0;
 
 const serverRoot = path.join(__dirname, "..");
 
@@ -58,10 +55,10 @@ async function signUpAndSignInUser(email) {
   return agent;
 }
 
-async function findDateWithSlots(slug, maxLookaheadDays = 21) {
+async function findDateWithSlots(slug, agent, maxLookaheadDays = 21) {
   for (let offset = 1; offset <= maxLookaheadDays; offset += 1) {
     const date = DateTime.now().plus({ days: offset }).toISODate();
-    const slotsResponse = await request(app).get(`/api/public/${slug}/slots`).query({ date });
+    const slotsResponse = await agent.get(`/api/public/${slug}/slots`).query({ date });
 
     if (slotsResponse.status === 200 && slotsResponse.body.length > 0) {
       return { date, slots: slotsResponse.body };
@@ -136,14 +133,14 @@ test("public booking flow prevents double booking and supports cancellation", as
   const agent = await getAuthenticatedAgent();
   const slug = "intro-call";
 
-  const publicEventResponse = await request(app).get(`/api/public/${slug}`);
+  const publicEventResponse = await agent.get(`/api/public/${slug}`);
   assert.equal(publicEventResponse.status, 200);
   assert.equal(publicEventResponse.body.slug, slug);
 
-  const { slots } = await findDateWithSlots(slug);
+  const { slots } = await findDateWithSlots(slug, agent);
   const selectedSlot = slots[0];
 
-  const createBookingResponse = await request(app)
+  const createBookingResponse = await agent
     .post(`/api/public/${slug}/book`)
     .send({
       startTimeUTC: selectedSlot.startTimeUTC,
@@ -155,7 +152,7 @@ test("public booking flow prevents double booking and supports cancellation", as
   assert.equal(createBookingResponse.status, 201);
   assert.ok(createBookingResponse.body.bookingId);
 
-  const duplicateBookingResponse = await request(app)
+  const duplicateBookingResponse = await agent
     .post(`/api/public/${slug}/book`)
     .send({
       startTimeUTC: selectedSlot.startTimeUTC,
@@ -166,7 +163,7 @@ test("public booking flow prevents double booking and supports cancellation", as
   assert.equal(duplicateBookingResponse.status, 400);
   assert.equal(duplicateBookingResponse.body.message, "Selected slot is not available");
 
-  const confirmationResponse = await request(app).get(
+  const confirmationResponse = await agent.get(
     `/api/public/bookings/${createBookingResponse.body.bookingId}`
   );
 
@@ -191,24 +188,20 @@ test("public booking flow prevents double booking and supports cancellation", as
   assert.equal(cancelAgainResponse.status, 404);
 });
 
-test("private API access follows configured mode", async () => {
-  const [eventsResponse, availabilityResponse, bookingsResponse] = await Promise.all([
+test("all feature APIs require login", async () => {
+  const [eventsResponse, availabilityResponse, bookingsResponse, publicEventResponse, publicSlotsResponse] = await Promise.all([
     request(app).get("/api/event-types"),
     request(app).get("/api/availability"),
     request(app).get("/api/bookings"),
+    request(app).get("/api/public/intro-call"),
+    request(app).get(`/api/public/intro-call/slots`).query({ date: DateTime.now().plus({ days: 1 }).toISODate() }),
   ]);
-
-  if (isAssignmentMode) {
-    const expectedStatus = hasAssignmentFallbackUser ? 200 : 401;
-    assert.equal(eventsResponse.status, expectedStatus);
-    assert.equal(availabilityResponse.status, expectedStatus);
-    assert.equal(bookingsResponse.status, expectedStatus);
-    return;
-  }
 
   assert.equal(eventsResponse.status, 401);
   assert.equal(availabilityResponse.status, 401);
   assert.equal(bookingsResponse.status, 401);
+  assert.equal(publicEventResponse.status, 401);
+  assert.equal(publicSlotsResponse.status, 401);
 });
 
 test("normal user cannot manage meetings and can only view own bookings", async () => {
@@ -223,10 +216,10 @@ test("normal user cannot manage meetings and can only view own bookings", async 
   const availabilityResponse = await userAgent.get("/api/availability");
   assert.equal(availabilityResponse.status, 403);
 
-  const { slots } = await findDateWithSlots("intro-call");
+  const { slots } = await findDateWithSlots("intro-call", userAgent);
   const selectedSlot = slots[0];
 
-  const userBookingResponse = await request(app)
+  const userBookingResponse = await userAgent
     .post("/api/public/intro-call/book")
     .send({
       startTimeUTC: selectedSlot.startTimeUTC,

@@ -1841,9 +1841,57 @@ button:hover {
   margin-top: 8px;
 }
 
+.public-page-shell {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 14px 18px 24px;
+}
+
+.public-page-nav {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(8px);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.public-page-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.public-page-links a {
+  border-radius: 8px;
+  padding: 7px 10px;
+  text-decoration: none;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.public-page-links a:hover {
+  background: #eef2f8;
+  color: #1f2937;
+}
+
+.public-page-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .public-wrapper {
   max-width: 1120px;
-  margin: 26px auto;
+  margin: 16px auto 0;
   padding: 14px 20px;
   display: grid;
   gap: 14px;
@@ -1885,21 +1933,52 @@ button:hover {
 
 .slot-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(108px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(112px, 1fr));
+  gap: 10px;
 }
 
 .slot-btn {
   border: 1px solid #d7dfea;
-  background: #f8fafc;
-  color: #1e293b;
-  font-weight: 600;
+  background: linear-gradient(180deg, #f8fbff, #f2f6fc);
+  color: #253246;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  min-height: 42px;
+  border-radius: 11px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset;
 }
 
 .slot-btn-active {
-  border-color: transparent;
+  border-color: #1149af;
   background: linear-gradient(180deg, var(--primary), var(--primary-strong));
   color: #fff;
+}
+
+.public-card-slots {
+  border-color: #d8e3f5;
+  background:
+    radial-gradient(circle at 92% 4%, rgba(29, 78, 216, 0.08), transparent 36%),
+    linear-gradient(180deg, #ffffff, #f8fbff);
+}
+
+.slot-date-field {
+  margin-top: 2px;
+}
+
+.slot-date-field input {
+  background: #fff;
+  border-color: #cfdcee;
+  font-weight: 600;
+}
+
+.slot-grid-wrap {
+  border: 1px solid #dbe5f4;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff, #f7faff);
+  padding: 10px;
+  max-height: 560px;
+  overflow: auto;
 }
 
 .confirmation-card {
@@ -2051,6 +2130,23 @@ button:hover {
   .bookings-grid,
   .public-wrapper {
     grid-template-columns: 1fr;
+  }
+
+  .public-page-nav {
+    flex-wrap: wrap;
+    top: 8px;
+  }
+
+  .public-page-links {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+  }
+
+  .public-page-actions {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .rule-row {

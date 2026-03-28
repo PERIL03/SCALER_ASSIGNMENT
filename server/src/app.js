@@ -19,7 +19,6 @@ const JWT_SECRET = process.env.JWT_SECRET || "change-me-in-production";
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:3000";
 const googleClient = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 const PASSWORD_HASH_PREFIX = "scrypt";
-const ASSIGNMENT_MODE = process.env.ASSIGNMENT_MODE !== "false";
 const ASSIGNMENT_DEFAULT_USER_ID = Number(process.env.ASSIGNMENT_DEFAULT_USER_ID || 0);
 const HARD_CODED_ADMIN_EMAIL = "admin@calclone.dev";
 const HARD_CODED_ADMIN_PASSWORD = "Admin@1234";
@@ -71,10 +70,6 @@ function getRequestUserId(req) {
   const authUserId = Number(req.auth?.userId);
   if (Number.isInteger(authUserId) && authUserId > 0) {
     return authUserId;
-  }
-
-  if (ASSIGNMENT_MODE && ASSIGNMENT_DEFAULT_USER_ID > 0) {
-    return ASSIGNMENT_DEFAULT_USER_ID;
   }
 
   return null;
@@ -597,6 +592,8 @@ app.use("/api/availability", requireVerifiedEmail);
 app.use("/api/availability", requireAdmin);
 app.use("/api/bookings", requireAuth);
 app.use("/api/bookings", requireVerifiedEmail);
+app.use("/api/public", requireAuth);
+app.use("/api/public", requireVerifiedEmail);
 
 app.post("/api/onboarding/complete", requireAuth, requireVerifiedEmail, async (req, res) => {
   const schema = z.object({
@@ -939,8 +936,7 @@ app.get("/api/public/:slug/slots", async (req, res) => {
 app.post("/api/public/:slug/book", async (req, res) => {
   const schema = z.object({
     startTimeUTC: z.string().datetime(),
-    bookerName: z.string().min(2),
-    bookerEmail: z.string().email(),
+    bookerName: z.string().min(2).optional(),
   });
 
   const parsed = schema.safeParse(req.body);
@@ -961,6 +957,15 @@ app.post("/api/public/:slug/book", async (req, res) => {
   }
 
   const eventType = eventRows[0];
+  const authenticatedUser = await getUserById(Number(req.userId));
+  if (!authenticatedUser) {
+    return res.status(401).json({ message: "Not authenticated" });
+  }
+
+  const bookerName =
+    (parsed.data.bookerName && parsed.data.bookerName.trim()) ||
+    authenticatedUser.name ||
+    createDefaultNameFromEmail(authenticatedUser.email);
   const timezone = eventType.timezone || DEFAULT_TIMEZONE;
   const startUtc = DateTime.fromISO(parsed.data.startTimeUTC, { zone: "utc" });
   const endUtc = startUtc.plus({ minutes: Number(eventType.durationMinutes) });
@@ -1020,8 +1025,8 @@ app.post("/api/public/:slug/book", async (req, res) => {
        VALUES (?, ?, ?, ?, ?)`,
       [
         eventType.id,
-        parsed.data.bookerName,
-        parsed.data.bookerEmail,
+        bookerName,
+        authenticatedUser.email,
         isoToSqlDateTime(startUtc.toISO()),
         isoToSqlDateTime(endUtc.toISO()),
       ]

@@ -32,9 +32,9 @@ function getPasswordStrength(score) {
   return { label: "Strong", className: "password-strength-strong" };
 }
 
-export default function EmailAuthForm({ redirectTo = "/dashboard" }) {
+export default function EmailAuthForm({ redirectTo = "/dashboard", initialMode = "signup" }) {
   const router = useRouter();
-  const [mode, setMode] = useState("signup");
+  const [mode, setMode] = useState(initialMode === "signin" ? "signin" : "signup");
   const [form, setForm] = useState(INITIAL_FORM);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

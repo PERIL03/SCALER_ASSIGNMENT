@@ -22,6 +22,8 @@ function getSafeRedirectPath(rawNext) {
 export default async function SignUpPage({ searchParams }) {
   const resolvedSearchParams = await searchParams;
   const redirectTo = getSafeRedirectPath(resolvedSearchParams?.next);
+  const forceAdminAuth = resolvedSearchParams?.admin === "1";
+  const requestedMode = resolvedSearchParams?.mode === "signin" ? "signin" : "signup";
 
   return (
     <div className="signup-shell">
@@ -34,6 +36,10 @@ export default async function SignUpPage({ searchParams }) {
             Continue with Google, or use email and password to set up your account.
           </p>
 
+          {forceAdminAuth ? (
+            <p className="auth-warning">Admin authentication required to access the admin panel.</p>
+          ) : null}
+
           <div className="signup-auth-row">
             <GoogleAuthControls redirectTo={redirectTo} />
           </div>
@@ -42,7 +48,7 @@ export default async function SignUpPage({ searchParams }) {
 
           <section className="signup-email-block" aria-label="Email sign up form">
             <h2>Email and password access</h2>
-            <EmailAuthForm redirectTo={redirectTo} />
+            <EmailAuthForm redirectTo={redirectTo} initialMode={requestedMode} />
           </section>
 
           <div className="signup-links">

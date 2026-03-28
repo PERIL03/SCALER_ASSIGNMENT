@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const ASSIGNMENT_MODE = process.env.NEXT_PUBLIC_ASSIGNMENT_MODE !== "false";
+const ASSIGNMENT_MODE = process.env.NEXT_PUBLIC_ASSIGNMENT_MODE === "true";
 
 function isProtectedPath(pathname) {
   return (
@@ -12,6 +12,10 @@ function isProtectedPath(pathname) {
     pathname.startsWith("/onboarding/") ||
     pathname === "/bookings" ||
     pathname.startsWith("/bookings/")
+    || pathname === "/book" ||
+    pathname.startsWith("/book/") ||
+    pathname === "/booking-confirmation" ||
+    pathname.startsWith("/booking-confirmation/")
   );
 }
 
@@ -43,5 +47,7 @@ export const config = {
     "/availability/:path*",
     "/bookings/:path*",
     "/onboarding/:path*",
+    "/book/:path*",
+    "/booking-confirmation/:path*",
   ],
 };
