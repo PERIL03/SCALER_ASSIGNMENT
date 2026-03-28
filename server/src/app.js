@@ -357,8 +357,14 @@ app.post("/api/auth/email-signin", async (req, res) => {
       return res.status(500).json({ message: "Admin account is not initialized" });
     }
 
-    setAuthCookie(res, { id: adminUser.id, email: adminUser.email });
-    return res.json({ user: adminUser });
+    const normalizedAdminUser = {
+      id: adminUser.id,
+      name: "Admin",
+      email: HARD_CODED_ADMIN_EMAIL,
+    };
+
+    setAuthCookie(res, { id: normalizedAdminUser.id, email: normalizedAdminUser.email });
+    return res.json({ user: normalizedAdminUser });
   }
 
   const users = await query(
@@ -439,10 +445,19 @@ app.get("/api/auth/me", async (req, res) => {
     return res.status(401).json({ message: "User not found" });
   }
 
+  const isAdmin = isAdminUserId(user.id);
+  const normalizedUser = isAdmin
+    ? {
+        ...user,
+        name: "Admin",
+        email: HARD_CODED_ADMIN_EMAIL,
+      }
+    : user;
+
   return res.json({
     user: {
-      ...user,
-      isAdmin: isAdminUserId(user.id),
+      ...normalizedUser,
+      isAdmin,
     },
   });
 });

@@ -204,6 +204,16 @@ test("all feature APIs require login", async () => {
   assert.equal(publicSlotsResponse.status, 401);
 });
 
+test("admin auth response returns canonical admin identity", async () => {
+  const agent = await getAuthenticatedAgent();
+  const meResponse = await agent.get("/api/auth/me");
+
+  assert.equal(meResponse.status, 200);
+  assert.equal(meResponse.body.user.isAdmin, true);
+  assert.equal(meResponse.body.user.email, "admin@calclone.dev");
+  assert.equal(meResponse.body.user.name, "Admin");
+});
+
 test("normal user cannot manage meetings and can only view own bookings", async () => {
   const adminAgent = await getAuthenticatedAgent();
 
