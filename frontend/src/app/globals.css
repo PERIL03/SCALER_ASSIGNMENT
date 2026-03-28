@@ -1981,6 +1981,34 @@ button:hover {
   overflow: auto;
 }
 
+.public-card-history {
+  grid-column: 1 / -1;
+}
+
+.public-booking-history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.public-booking-history-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.public-booking-history-group {
+  display: grid;
+  gap: 10px;
+}
+
+.public-booking-history-title {
+  font-size: 1rem;
+  color: #334155;
+}
+
 .confirmation-card {
   max-width: 620px;
   margin: 40px auto;
