@@ -61,9 +61,6 @@ export default function LandingPage() {
             ))}
           </nav>
           <div className="calx-nav-actions">
-            <Link href="/dashboard" className="topbar-switch-link">
-              Switch to admin panel
-            </Link>
             <GoogleAuthControls compact />
           </div>
         </header>

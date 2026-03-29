@@ -230,9 +230,20 @@ export default function GoogleAuthControls({
               </span>
 
               <div className="auth-dropdown-links">
-                <Link href={user.isAdmin ? "/dashboard" : "/book/intro-call"} role="menuitem">
-                  {user.isAdmin ? "Open admin dashboard" : "Open user booking page"}
-                </Link>
+                {user.isAdmin ? (
+                  <Link href="/book/intro-call" role="menuitem">
+                    Switch to user view
+                  </Link>
+                ) : (
+                  <>
+                    <Link href="/book/intro-call" role="menuitem">
+                      Open user booking page
+                    </Link>
+                    <Link href="/signup?next=/dashboard&admin=1&mode=signin" role="menuitem">
+                      Switch to admin panel
+                    </Link>
+                  </>
+                )}
               </div>
 
               <button type="button" className="auth-logout-btn" onClick={handleLogout}>

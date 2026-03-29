@@ -168,9 +168,6 @@ export default function PublicBookingPage() {
         </nav>
 
         <div className="public-page-actions">
-          <Link href="/dashboard" className="topbar-switch-link">
-            Switch to admin panel
-          </Link>
           <GoogleAuthControls compact redirectTo={`/book/${slug}`} />
         </div>
       </header>
