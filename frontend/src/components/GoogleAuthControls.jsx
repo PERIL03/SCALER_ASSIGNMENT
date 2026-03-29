@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { getAuthErrorMessage } from "@/lib/authFeedback";
+import { showToast } from "@/lib/toast";
 
 const GOOGLE_SCRIPT_SRC = "https://accounts.google.com/gsi/client";
 const CREDENTIAL_EVENT = "cal-google-credential";
@@ -45,12 +46,14 @@ export default function GoogleAuthControls({
         if (currentUser) {
           setUser(currentUser);
           if (requireAdmin && !currentUser.isAdmin) {
+            showToast("Signed in as user account. Admin panel requires an admin account.", "info");
             router.push("/book/intro-call?notice=admin-only");
             router.refresh();
             return;
           }
         }
 
+        showToast("Signed in successfully.", "success");
         router.push(redirectTo);
         router.refresh();
       } catch (err) {

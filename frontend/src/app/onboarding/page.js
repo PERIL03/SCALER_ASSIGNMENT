@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { getAuthErrorMessage } from "@/lib/authFeedback";
+import { showToast } from "@/lib/toast";
 
 function getSafeNextPath(raw) {
   if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/dashboard";
@@ -30,6 +31,7 @@ export default function OnboardingPage() {
 
     try {
       await api.completeOnboarding({ timezone });
+      showToast("Workspace setup complete.", "success");
       router.replace(nextPath);
       router.refresh();
     } catch (err) {

@@ -1,5 +1,6 @@
 import { Manrope, Space_Grotesk } from "next/font/google";
 import "./globals.css";
+import AppToastProvider from "@/components/AppToastProvider";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -23,7 +24,9 @@ export default function RootLayout({ children }) {
       data-scroll-behavior="smooth"
       className={`${manrope.variable} ${spaceGrotesk.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <AppToastProvider>{children}</AppToastProvider>
+      </body>
     </html>
   );
 }

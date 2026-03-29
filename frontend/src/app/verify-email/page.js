@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { getAuthErrorMessage } from "@/lib/authFeedback";
+import { showToast } from "@/lib/toast";
 
 function getSafeNextPath(raw) {
   if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/dashboard";
@@ -38,6 +39,7 @@ export default function VerifyEmailPage() {
           setBusy(true);
           await api.verifyEmailToken(token);
           setMessage("Email verified successfully. Redirecting...");
+          showToast("Email verified successfully.", "success");
         }
 
         const { user } = await api.getCurrentUser();
@@ -49,6 +51,7 @@ export default function VerifyEmailPage() {
         }
 
         if (!user.onboardingCompleted) {
+          showToast("Complete your workspace setup to continue.", "info");
           router.replace(`/onboarding?next=${encodeURIComponent(nextPath)}`);
           return;
         }

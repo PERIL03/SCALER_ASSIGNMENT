@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import GoogleAuthControls from "@/components/GoogleAuthControls";
 import { api } from "@/lib/api";
+import { showToast } from "@/lib/toast";
 
 const ASSIGNMENT_MODE = process.env.NEXT_PUBLIC_ASSIGNMENT_MODE === "true";
 
@@ -61,16 +62,19 @@ export default function AdminLayout({ children }) {
         if (cancelled) return;
 
         if (!data.user?.emailVerified) {
+          showToast("Please verify your email before opening the admin workspace.", "warning");
           router.replace(`/verify-email?next=${encodeURIComponent(pathname)}`);
           return;
         }
 
         if (!data.user?.onboardingCompleted) {
+          showToast("Complete workspace setup to continue.", "info");
           router.replace(`/onboarding?next=${encodeURIComponent(pathname)}`);
           return;
         }
 
         if (!data.user?.isAdmin) {
+          showToast("Admin panel requires an admin account.", "warning");
           const adminLoginUrl = `/signup?next=${encodeURIComponent(pathname)}&admin=1&mode=signin`;
           router.replace(adminLoginUrl);
           return;
@@ -79,6 +83,7 @@ export default function AdminLayout({ children }) {
         setReady(true);
       } catch {
         if (!cancelled) {
+          showToast("Please sign in to continue.", "warning");
           router.replace(`/signup?next=${encodeURIComponent(pathname)}&admin=1&mode=signin`);
         }
       }

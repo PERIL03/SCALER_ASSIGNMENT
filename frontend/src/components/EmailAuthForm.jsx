@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { getAuthErrorMessage } from "@/lib/authFeedback";
+import { showToast } from "@/lib/toast";
 
 const INITIAL_FORM = {
   name: "",
@@ -86,12 +87,14 @@ export default function EmailAuthForm({
         try {
           const data = await api.getCurrentUser();
           if (!data.user?.emailVerified) {
+            showToast("Verify your email to continue.", "warning");
             router.push(`/verify-email?next=${encodeURIComponent(redirectTo)}`);
             router.refresh();
             return;
           }
 
           if (requireAdmin && !data.user?.isAdmin) {
+            showToast("You are signed in as a user account. Admin access requires an admin account.", "info");
             router.push("/book/intro-call?notice=admin-only");
             router.refresh();
             return;
@@ -101,6 +104,7 @@ export default function EmailAuthForm({
         }
       }
 
+      showToast(isSignup ? "Account created. Check your inbox for verification." : "Signed in successfully.", "success");
       router.push(redirectTo);
       router.refresh();
     } catch (err) {
