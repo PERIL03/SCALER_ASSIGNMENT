@@ -24,8 +24,10 @@ export default function PublicBookingPage() {
   const [bookerEmail, setBookerEmail] = useState("");
   const [error, setError] = useState("");
   const [upcomingBookings, setUpcomingBookings] = useState([]);
+  const [pastBookings, setPastBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(true);
   const [bookingsError, setBookingsError] = useState("");
+  const [bookingsTab, setBookingsTab] = useState("active");
 
   useEffect(() => {
     let cancelled = false;
@@ -38,11 +40,11 @@ export default function PublicBookingPage() {
         setBookerName(data.user?.name || "");
         setBookerEmail(data.user?.email || "");
 
-        api
-          .getBookings("upcoming")
-          .then((upcomingData) => {
+        Promise.all([api.getBookings("upcoming"), api.getBookings("past")])
+          .then(([upcomingData, pastData]) => {
             if (cancelled) return;
             setUpcomingBookings(Array.isArray(upcomingData) ? upcomingData : []);
+            setPastBookings(Array.isArray(pastData) ? pastData : []);
             setBookingsError("");
           })
           .catch((err) => {
@@ -138,6 +140,15 @@ export default function PublicBookingPage() {
     });
   }, [upcomingBookings]);
 
+  const visiblePreviousBookings = useMemo(() => {
+    return pastBookings.filter((booking) => {
+      const status = String(booking.status || "").toLowerCase();
+      return status !== "cancelled" && status !== "canceled";
+    });
+  }, [pastBookings]);
+
+  const visibleMyBookings = bookingsTab === "active" ? visibleUpcomingBookings : visiblePreviousBookings;
+
   const selectedDateLabel = useMemo(() => {
     return DateTime.fromISO(date).toLocaleString(DateTime.DATE_FULL);
   }, [date]);
@@ -178,18 +189,41 @@ export default function PublicBookingPage() {
         ) : null}
 
         <section id="my-bookings" className="public-card quick-booking-upcoming">
-          <h2>Upcoming Bookings</h2>
+          <h2>My Bookings</h2>
 
-          {bookingsLoading ? <p className="page-subtitle">Loading upcoming bookings...</p> : null}
-          {bookingsError ? <p className="error-text">{bookingsError}</p> : null}
-
-          {!bookingsLoading && !bookingsError && visibleUpcomingBookings.length === 0 ? (
-            <p className="page-subtitle">No upcoming bookings right now.</p>
+          {!bookingsLoading && !bookingsError ? (
+            <div className="public-booking-history-tabs" role="tablist" aria-label="My bookings tabs">
+              <button
+                type="button"
+                className={bookingsTab === "active" ? "view-toggle-btn view-toggle-btn-active" : "view-toggle-btn"}
+                onClick={() => setBookingsTab("active")}
+                role="tab"
+                aria-selected={bookingsTab === "active"}
+              >
+                Active ({visibleUpcomingBookings.length})
+              </button>
+              <button
+                type="button"
+                className={bookingsTab === "previous" ? "view-toggle-btn view-toggle-btn-active" : "view-toggle-btn"}
+                onClick={() => setBookingsTab("previous")}
+                role="tab"
+                aria-selected={bookingsTab === "previous"}
+              >
+                Previous ({visiblePreviousBookings.length})
+              </button>
+            </div>
           ) : null}
 
-          {!bookingsLoading && !bookingsError && visibleUpcomingBookings.length > 0 ? (
+          {bookingsLoading ? <p className="page-subtitle">Loading your bookings...</p> : null}
+          {bookingsError ? <p className="error-text">{bookingsError}</p> : null}
+
+          {!bookingsLoading && !bookingsError && visibleMyBookings.length === 0 ? (
+            <p className="page-subtitle">No {bookingsTab} bookings right now.</p>
+          ) : null}
+
+          {!bookingsLoading && !bookingsError && visibleMyBookings.length > 0 ? (
             <div className="quick-booking-list">
-              {visibleUpcomingBookings.map((booking) => (
+              {visibleMyBookings.map((booking) => (
                 <article key={booking.id} className="quick-booking-item">
                   <p>
                     <strong>{booking.eventTitle}</strong>
