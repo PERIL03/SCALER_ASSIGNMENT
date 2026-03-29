@@ -1,56 +1,67 @@
-# Scheduling Platform (Cal.com Clone)
+# SCALER Scheduling Platform (Cal.com-Inspired)
 
-This project is a beginner-friendly fullstack scheduling app built for the Scaler SDE Intern assignment.
+Fullstack scheduling app built for the Scaler SDE Intern assignment.
 
 ## Tech Stack
 
-- Frontend: Next.js (App Router)
+- Frontend: Next.js (App Router), React
 - Backend: Node.js, Express
 - Database: MySQL
-- Date/Time: Luxon
+- Auth: JWT cookie sessions + Google OAuth + Email/Password
+- Validation/Time: Zod, Luxon
 
-## Features Implemented
-
-### 1. Event Types Management
-- Create event type (title, description, duration, slug)
-- Edit event type
-- Delete event type
-- List event types on admin dashboard
-- Public booking URL for each event type
-
-### 2. Availability Settings
-- Set timezone
-- Set weekly day-based availability rules
-- Multiple day/time rules supported
-
-### 3. Public Booking Page
-- Public page by slug (`/book/:slug`)
-- Date selection
-- Available slot list based on availability + existing bookings
-- Booking form (name + email)
-- Double booking prevention on backend using unique DB index
-- Booking confirmation page
-
-### 4. Bookings Dashboard
-- Upcoming bookings
-- Past bookings
-- Cancel booking action
-
-## Project Structure
+## Repository Structure
 
 ```bash
 SCALER/
-  frontend/   # Next.js app (final submission frontend)
-  server/     # Express API + MySQL scripts
+  frontend/          # Next.js application
+  server/            # Express API, seed, tests, SQL schema
+  docker-compose.yml # Local full-stack orchestration
+  DEPLOYMENT.md      # Deployment notes
 ```
 
-Note: A duplicate legacy frontend was removed to keep the submission path clean.
+## Current Product Behavior
 
-## Setup Instructions
+### Authentication and Account Flow
 
-## Docker (One-Command Local Run)
+- Single auth entry on landing page: `SIGN IN / SIGN UP` routes to `/signup`
+- `/signup` supports:
+  - Email sign up / sign in
+  - Google OAuth
+  - Admin-required mode handling
+- Email verification and onboarding are enforced before protected workflows
+- Session uses HTTP-only auth cookie with cross-site support in production
 
-If Docker is installed, you can run everything (MySQL + backend + frontend) with:
+### Roles and Access
+
+- Admin-only:
+  - Event types management
+  - Availability management
+  - Admin dashboard routes
+- Regular user:
+  - User booking page
+  - Own bookings visibility (active/past)
+  - Cannot manage admin resources
+
+### Booking Experience
+
+- User booking page (`/book/:slug`) includes:
+  - Left panel: `My Bookings` with `Active` and `Previous` tabs (user-scoped)
+  - Right panel: quick booking card (date + time dropdown + identity fields)
+- Backend prevents double booking via validation + DB uniqueness constraints
+- Booking confirmation route: `/booking-confirmation/:bookingId`
+
+### UI/UX Enhancements Included
+
+- Compact profile pill + dropdown in navbar
+- Global toast notifications for auth redirects and status feedback
+- Clear handling for admin-required redirects when signed in as a regular user
+
+## Local Setup
+
+## Option A: Docker (Recommended for quick local run)
+
+From repo root:
 
 ```bash
 docker compose up --build
@@ -58,139 +69,141 @@ docker compose up --build
 
 Services:
 
-- Frontend: http://localhost:3000
-- Backend: http://localhost:4000
-- MySQL: localhost:3306
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:4000`
+- MySQL: `localhost:3306`
 
-The compose setup runs the seed job automatically before the backend starts.
-
-To stop:
+Stop:
 
 ```bash
 docker compose down
 ```
 
-To also delete DB volume data:
+Remove DB volume as well:
 
 ```bash
 docker compose down -v
 ```
 
-## 1) Database Setup (MySQL)
+## Option B: Manual setup
 
-Create a MySQL database, for example:
+### 1) Database
+
+Create DB:
 
 ```sql
 CREATE DATABASE cal_clone;
 ```
 
-## 2) Backend Setup
+### 2) Backend
 
 ```bash
 cd server
 cp .env.example .env
-```
-
-Update `.env` values:
-
-- `DATABASE_URL=mysql://<username>:<password>@localhost:3306/cal_clone`
-- `PORT=4000`
-- `DEFAULT_TIMEZONE=Asia/Kolkata`
-- `CORS_ORIGIN=http://localhost:3000`
-- `JWT_SECRET=<long-random-secret>`
-- `GOOGLE_CLIENT_ID=<google-oauth-web-client-id>`
-
-Run schema + seed:
-
-```bash
+npm install
 npm run seed
-```
-
-Start backend:
-
-```bash
 npm run dev
 ```
 
-## 3) Frontend Setup
+Default backend URL: `http://localhost:4000`
+
+### 3) Frontend
 
 In a new terminal:
 
 ```bash
 cd frontend
+npm install
 npm run dev
 ```
 
-Frontend default URL: `http://localhost:3000`
+Default frontend URL: `http://localhost:3000`
 
-Backend default URL: `http://localhost:4000`
-
-If needed, create `frontend/.env`:
+Create `frontend/.env.local` if needed:
 
 ```bash
 NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=<google-oauth-web-client-id>
+NEXT_PUBLIC_ASSIGNMENT_MODE=false
 ```
 
-## Testing
+## Important Environment Variables
 
-### Backend automated tests
+### Backend (`server/.env`)
 
-The backend has integration and utility tests.
+- `PORT` (default `4000`)
+- `DATABASE_URL` (MySQL connection URL)
+- `DEFAULT_TIMEZONE` (default `Asia/Kolkata`)
+- `CORS_ORIGIN` (comma-separated allowed frontend origins)
+- `JWT_SECRET` (required in real deployments)
+- `GOOGLE_CLIENT_ID` (required for Google OAuth)
+- `ASSIGNMENT_DEFAULT_USER_ID` (admin fallback id, default `1`)
+- `ADMIN_EMAILS` (optional comma-separated admin email list)
+- `ALLOW_VERCEL_PREVIEW_ORIGINS` (`true/false`, preview CORS fallback)
+
+### Frontend (`frontend/.env.local`)
+
+- `NEXT_PUBLIC_API_BASE_URL`
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
+- `NEXT_PUBLIC_ASSIGNMENT_MODE`
+
+## Testing and Quality Checks
+
+### Backend tests
 
 ```bash
 cd server
 npm test
 ```
 
-This runs:
-
-- Database reseed before test run
-- API integration tests for event type CRUD, availability, booking flow, double-booking protection, and cancellation
-- Slot generation utility tests
-
-### Frontend quality checks
+### Frontend checks
 
 ```bash
 cd frontend
-npm run lint -- --max-warnings=0
+npm run lint
 npm run build
 ```
 
-These ensure the frontend passes lint checks and production build.
+## API Snapshot
 
-## API Summary
+### Auth
 
-### Admin APIs
+- `POST /api/auth/email-signup`
+- `POST /api/auth/email-signin`
 - `POST /api/auth/google`
 - `GET /api/auth/me`
+- `POST /api/auth/send-verification`
+- `POST /api/auth/verify-email`
+- `POST /api/auth/forgot-password`
+- `POST /api/auth/reset-password`
 - `POST /api/auth/logout`
-- `GET /api/event-types`
-- `POST /api/event-types`
-- `PUT /api/event-types/:id`
-- `DELETE /api/event-types/:id`
-- `GET /api/availability`
-- `PUT /api/availability`
+
+### Admin-protected resources
+
+- `GET|POST|PUT|DELETE /api/event-types...`
+- `GET|PUT /api/availability`
+
+### User bookings
+
 - `GET /api/bookings?scope=upcoming|past`
 - `POST /api/bookings/:id/cancel`
 
-### Public APIs
+### Booking routes used by frontend user booking flow
+
 - `GET /api/public/:slug`
 - `GET /api/public/:slug/slots?date=YYYY-MM-DD`
 - `POST /api/public/:slug/book`
 - `GET /api/public/bookings/:id`
 
-## Assumptions
+Note: In this project version, `/api/public/*` routes are login-protected by backend middleware.
 
-- Assignment mode is enabled by default (`ASSIGNMENT_MODE=true`), so admin pages work without login by using seeded default user `id=1`.
-- If you want secure/authenticated admin mode, set `ASSIGNMENT_MODE=false` in `server/.env` and `NEXT_PUBLIC_ASSIGNMENT_MODE=false` in `frontend/.env`.
-- Google login creates/updates user profile using Google email and stores session in HTTP-only cookie.
-- Bookings are blocked from double-booking the same event type and time slot.
-- Availability is configured for the default user and applied to all their event types.
+## Deployment
 
-## Notes for Interview Explanation
+See [DEPLOYMENT.md](DEPLOYMENT.md) for deployment steps.
 
-- Database schema is normalized with clear relationships (`users -> event_types`, `users -> availability_rules`, `event_types -> bookings`).
-- Slot generation is done on backend so business logic remains secure and consistent.
-- Public booking flow re-validates slot availability on backend before creating a booking.
-- Code is intentionally written in simple, readable modules for fresher-level explanation.
+## Demo Admin Credentials (Assignment)
+
+- Email: `admin@calclone.dev`
+- Password: `Admin@1234`
+
+For real deployments, replace hardcoded/admin-demo behavior with env-managed secrets and role records.
