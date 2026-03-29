@@ -1173,11 +1173,21 @@ a:hover {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-width: 84px;
+  min-width: 160px;
+  max-width: 220px;
   border: 1px solid #d3dbe8;
   border-radius: 999px;
   background: #fff;
   padding: 2px 10px 2px 2px;
+}
+
+.auth-pill-name {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .auth-dropdown-caret {
@@ -2081,6 +2091,11 @@ button:hover {
   grid-template-columns: 0.9fr 1.2fr 0.95fr;
 }
 
+.quick-booking-wrapper {
+  grid-template-columns: 1.15fr 0.9fr;
+  align-items: start;
+}
+
 .public-card {
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -2166,6 +2181,51 @@ button:hover {
 
 .public-card-history {
   grid-column: 1 / -1;
+}
+
+.quick-booking-upcoming {
+  gap: 12px;
+}
+
+.quick-booking-upcoming h2,
+.quick-booking-card h2 {
+  font-size: 1.8rem;
+  line-height: 1.15;
+}
+
+.quick-booking-list {
+  display: grid;
+  gap: 10px;
+}
+
+.quick-booking-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.quick-booking-item p:last-child {
+  color: #334155;
+  font-size: 13px;
+}
+
+.quick-booking-card {
+  gap: 12px;
+}
+
+.quick-booking-fields-row {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.quick-booking-fields-row label small {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .public-notice-banner {
@@ -2358,6 +2418,11 @@ button:hover {
 
   .bookings-grid,
   .public-wrapper {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-booking-wrapper,
+  .quick-booking-fields-row {
     grid-template-columns: 1fr;
   }
 

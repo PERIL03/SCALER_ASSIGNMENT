@@ -19,15 +19,13 @@ export default function PublicBookingPage() {
   const [eventType, setEventType] = useState(null);
   const [date, setDate] = useState(getDefaultDate());
   const [slots, setSlots] = useState([]);
-  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [selectedSlotKey, setSelectedSlotKey] = useState("");
   const [bookerName, setBookerName] = useState("");
   const [bookerEmail, setBookerEmail] = useState("");
   const [error, setError] = useState("");
   const [upcomingBookings, setUpcomingBookings] = useState([]);
-  const [pastBookings, setPastBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(true);
   const [bookingsError, setBookingsError] = useState("");
-  const [historyTab, setHistoryTab] = useState("active");
 
   useEffect(() => {
     let cancelled = false;
@@ -40,11 +38,11 @@ export default function PublicBookingPage() {
         setBookerName(data.user?.name || "");
         setBookerEmail(data.user?.email || "");
 
-        Promise.all([api.getBookings("upcoming"), api.getBookings("past")])
-          .then(([upcomingData, pastData]) => {
+        api
+          .getBookings("upcoming")
+          .then((upcomingData) => {
             if (cancelled) return;
             setUpcomingBookings(Array.isArray(upcomingData) ? upcomingData : []);
-            setPastBookings(Array.isArray(pastData) ? pastData : []);
             setBookingsError("");
           })
           .catch((err) => {
@@ -86,7 +84,15 @@ export default function PublicBookingPage() {
       .getPublicSlots(slug, date)
       .then((data) => {
         if (!cancelled) {
-          setSlots(data);
+          const normalizedSlots = Array.isArray(data) ? data : [];
+          setSlots(normalizedSlots);
+
+          const selectedStillExists = normalizedSlots.some(
+            (slot) => slot.startTimeUTC === selectedSlotKey
+          );
+          if (!selectedStillExists) {
+            setSelectedSlotKey("");
+          }
         }
       })
       .catch((err) => {
@@ -98,7 +104,11 @@ export default function PublicBookingPage() {
     return () => {
       cancelled = true;
     };
-  }, [slug, date]);
+  }, [slug, date, selectedSlotKey]);
+
+  const selectedSlot = useMemo(() => {
+    return slots.find((slot) => slot.startTimeUTC === selectedSlotKey) || null;
+  }, [selectedSlotKey, slots]);
 
   async function handleBookingSubmit(event) {
     event.preventDefault();
@@ -119,40 +129,18 @@ export default function PublicBookingPage() {
     }
   }
 
-  const selectedDateLabel = useMemo(() => {
-    return DateTime.fromISO(date).toLocaleString(DateTime.DATE_FULL);
-  }, [date]);
-
   const adminOnlyNotice = searchParams.get("notice") === "admin-only";
 
-  const cancelledBookings = useMemo(() => {
-    const all = [...upcomingBookings, ...pastBookings];
-    return all.filter((booking) => {
-      const status = String(booking.status || "").toLowerCase();
-      return status === "cancelled" || status === "canceled";
-    });
-  }, [pastBookings, upcomingBookings]);
-
-  const activeBookings = useMemo(() => {
+  const visibleUpcomingBookings = useMemo(() => {
     return upcomingBookings.filter((booking) => {
       const status = String(booking.status || "").toLowerCase();
       return status !== "cancelled" && status !== "canceled";
     });
   }, [upcomingBookings]);
 
-  const previousBookings = useMemo(() => {
-    return pastBookings.filter((booking) => {
-      const status = String(booking.status || "").toLowerCase();
-      return status !== "cancelled" && status !== "canceled";
-    });
-  }, [pastBookings]);
-
-  const visibleHistoryBookings =
-    historyTab === "active"
-      ? activeBookings
-      : historyTab === "previous"
-        ? previousBookings
-        : cancelledBookings;
+  const selectedDateLabel = useMemo(() => {
+    return DateTime.fromISO(date).toLocaleString(DateTime.DATE_FULL);
+  }, [date]);
 
   return (
     <div className="public-page-shell">
@@ -172,7 +160,7 @@ export default function PublicBookingPage() {
         </div>
       </header>
 
-      <div className="public-wrapper">
+      <div className="public-wrapper quick-booking-wrapper">
         {adminOnlyNotice ? (
           <section className="public-card public-notice-banner" aria-live="polite">
             <p className="public-step">Notice</p>
@@ -189,148 +177,106 @@ export default function PublicBookingPage() {
           </section>
         ) : null}
 
-        <section className="public-card public-card-event">
+        <section id="my-bookings" className="public-card quick-booking-upcoming">
+          <h2>Upcoming Bookings</h2>
+
+          {bookingsLoading ? <p className="page-subtitle">Loading upcoming bookings...</p> : null}
+          {bookingsError ? <p className="error-text">{bookingsError}</p> : null}
+
+          {!bookingsLoading && !bookingsError && visibleUpcomingBookings.length === 0 ? (
+            <p className="page-subtitle">No upcoming bookings right now.</p>
+          ) : null}
+
+          {!bookingsLoading && !bookingsError && visibleUpcomingBookings.length > 0 ? (
+            <div className="quick-booking-list">
+              {visibleUpcomingBookings.map((booking) => (
+                <article key={booking.id} className="quick-booking-item">
+                  <p>
+                    <strong>{booking.eventTitle}</strong>
+                  </p>
+                  <p>
+                    {DateTime.fromISO(booking.startTime).toLocaleString(DateTime.DATETIME_MED)} - Status:{" "}
+                    <span className="booking-status-pill">{booking.status}</span>
+                  </p>
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </section>
+
+        <section className="public-card quick-booking-card">
           {eventType ? (
             <>
-              <p className="public-step">Step 1</p>
-              <h1>{eventType.title}</h1>
-              <p>{eventType.description || "No description"}</p>
-              <p className="muted-strong">{eventType.durationMinutes} min meeting</p>
-              <p className="page-subtitle">Timezone: {eventType.timezone || "Asia/Kolkata"}</p>
+              <h2>{eventType.title}</h2>
+              <p className="page-subtitle">
+                {eventType.description || "Quick intro and requirement discussion."} {eventType.durationMinutes} min
+                meeting
+              </p>
+              <p className="muted-strong">Timezone: {eventType.timezone || "Asia/Kolkata"}</p>
             </>
           ) : (
             <p>Loading event details...</p>
           )}
-        </section>
 
-        <section className="public-card public-card-slots">
-          <p className="public-step">Step 2</p>
-          <h2>Select date and time</h2>
-          <label className="slot-date-field">
-            Date
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => {
-                setSelectedSlot(null);
-                setDate(e.target.value);
-              }}
-            />
-          </label>
-          <p className="page-subtitle">{selectedDateLabel}</p>
-
-          <div className="slot-grid-wrap">
-            <div className="slot-grid">
-              {slots.map((slot) => (
-                <button
-                  key={slot.startTimeUTC}
-                  className={
-                    selectedSlot?.startTimeUTC === slot.startTimeUTC
-                      ? "slot-btn slot-btn-active"
-                      : "slot-btn"
-                  }
-                  onClick={() => setSelectedSlot(slot)}
-                >
-                  {slot.label}
-                </button>
-              ))}
-            </div>
-            {!slots.length ? <p>No available times on this date.</p> : null}
-          </div>
-        </section>
-
-        <section className="public-card">
-          <p className="public-step">Step 3</p>
-          <h2>Enter details</h2>
-          {error && <p className="error-text">{error}</p>}
-
-          {selectedSlot ? (
-            <p className="slot-summary">
-              Selected time: <strong>{selectedSlot.label}</strong>
-            </p>
-          ) : (
-            <p className="page-subtitle">Choose a slot to continue.</p>
-          )}
+          {error ? <p className="error-text">{error}</p> : null}
 
           <form className="form-grid" onSubmit={handleBookingSubmit}>
-            <label>
-              Name
-              <input
-                value={bookerName}
-                onChange={(e) => setBookerName(e.target.value)}
-                required
-              />
-            </label>
+            <div className="quick-booking-fields-row">
+              <label>
+                Date
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => {
+                    setSelectedSlotKey("");
+                    setDate(e.target.value);
+                  }}
+                />
+                <small>{selectedDateLabel}</small>
+              </label>
 
-            <label>
-              Email
-              <input type="email" value={bookerEmail} disabled readOnly />
-            </label>
-
-            <button type="submit">Confirm booking</button>
-          </form>
-        </section>
-
-        <section id="my-bookings" className="public-card public-card-history">
-          <p className="public-step">History</p>
-          <h2>My bookings</h2>
-
-          {bookingsLoading ? <p className="page-subtitle">Loading your bookings...</p> : null}
-          {bookingsError ? <p className="error-text">{bookingsError}</p> : null}
-
-          {!bookingsLoading && !bookingsError ? (
-            <div className="public-booking-history-group">
-              <div className="public-booking-history-tabs" role="tablist" aria-label="Booking history tabs">
-                <button
-                  type="button"
-                  className={historyTab === "active" ? "view-toggle-btn view-toggle-btn-active" : "view-toggle-btn"}
-                  onClick={() => setHistoryTab("active")}
-                  role="tab"
-                  aria-selected={historyTab === "active"}
+              <label>
+                Time
+                <select
+                  value={selectedSlotKey}
+                  onChange={(e) => setSelectedSlotKey(e.target.value)}
+                  required
+                  disabled={!slots.length}
                 >
-                  Active ({activeBookings.length})
-                </button>
-                <button
-                  type="button"
-                  className={historyTab === "previous" ? "view-toggle-btn view-toggle-btn-active" : "view-toggle-btn"}
-                  onClick={() => setHistoryTab("previous")}
-                  role="tab"
-                  aria-selected={historyTab === "previous"}
-                >
-                  Previous ({previousBookings.length})
-                </button>
-                <button
-                  type="button"
-                  className={historyTab === "cancelled" ? "view-toggle-btn view-toggle-btn-active" : "view-toggle-btn"}
-                  onClick={() => setHistoryTab("cancelled")}
-                  role="tab"
-                  aria-selected={historyTab === "cancelled"}
-                >
-                  Cancelled ({cancelledBookings.length})
-                </button>
-              </div>
-
-              {visibleHistoryBookings.length === 0 ? (
-                <p className="page-subtitle">No bookings in this section yet.</p>
-              ) : (
-                <div className="public-booking-history-list">
-                  {visibleHistoryBookings.map((booking) => (
-                    <article key={booking.id} className="public-booking-history-item">
-                      <p>
-                        <strong>{booking.eventTitle}</strong>
-                      </p>
-                      <p>
-                        {DateTime.fromISO(booking.startTime).toLocaleString(DateTime.DATETIME_MED)}
-                      </p>
-                      <p>
-                        Status: <span className="booking-status-pill">{booking.status}</span>
-                      </p>
-                    </article>
+                  <option value="">Select a time</option>
+                  {slots.map((slot) => (
+                    <option key={slot.startTimeUTC} value={slot.startTimeUTC}>
+                      {slot.label}
+                    </option>
                   ))}
-                </div>
-              )}
+                </select>
+              </label>
             </div>
-          ) : null}
+
+            {!slots.length ? <p className="page-subtitle">No available times on this date.</p> : null}
+
+            {selectedSlot ? (
+              <p className="slot-summary">
+                Selected time: <strong>{selectedSlot.label}</strong>
+              </p>
+            ) : null}
+
+            <div className="quick-booking-fields-row">
+              <label>
+                Name
+                <input value={bookerName} onChange={(e) => setBookerName(e.target.value)} required />
+              </label>
+
+              <label>
+                Email
+                <input type="email" value={bookerEmail} disabled readOnly />
+              </label>
+            </div>
+
+            <button type="submit" disabled={!selectedSlot}>
+              Confirm booking
+            </button>
+          </form>
         </section>
       </div>
     </div>
