@@ -19,6 +19,8 @@ export default function GoogleAuthControls({
   compact = false,
   redirectTo = "/dashboard",
   requireAdmin = false,
+  signedOutHref = "",
+  signedOutLabel = "",
 }) {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -213,6 +215,7 @@ export default function GoogleAuthControls({
             aria-label="Open profile menu"
           >
             <span className="auth-avatar">{getInitial(user.name || user.email)}</span>
+            <span className="auth-pill-name">{user.name || user.email}</span>
             <span className="auth-dropdown-caret" aria-hidden="true">
               v
             </span>
@@ -269,6 +272,14 @@ export default function GoogleAuthControls({
           Logout
         </button>
       </div>
+    );
+  }
+
+  if (compact && signedOutHref) {
+    return (
+      <Link href={signedOutHref} className="topbar-switch-link">
+        {signedOutLabel || "SIGN IN / SIGN UP"}
+      </Link>
     );
   }
 

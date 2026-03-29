@@ -61,7 +61,12 @@ export default function LandingPage() {
             ))}
           </nav>
           <div className="calx-nav-actions">
-            <GoogleAuthControls compact />
+            <GoogleAuthControls
+              compact
+              redirectTo="/"
+              signedOutHref="/signup"
+              signedOutLabel="SIGN IN / SIGN UP"
+            />
           </div>
         </header>
 
