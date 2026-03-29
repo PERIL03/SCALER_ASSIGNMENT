@@ -1122,6 +1122,22 @@ a:hover {
   color: #64748b;
 }
 
+.auth-role-badge {
+  border: 1px solid #d8dee8;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+}
+
+.auth-role-badge-admin {
+  border-color: #bfd4ff;
+  background: #e9f1ff;
+  color: #1d4ed8;
+}
+
 .auth-logout-btn {
   border: 1px solid #d0d7e2;
   border-radius: 999px;
@@ -1143,6 +1159,11 @@ a:hover {
   padding: 6px 8px;
   color: #64748b;
   font-size: 11px;
+}
+
+.auth-warning-block {
+  display: grid;
+  gap: 6px;
 }
 
 .auth-warning code {
@@ -1424,6 +1445,26 @@ a:hover {
   margin-top: 16px;
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.signup-session-panel {
+  border: 1px solid #dbe5f3;
+  border-radius: 12px;
+  background: #f8fbff;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.signup-session-user {
+  color: #334155;
+  font-size: 14px;
+}
+
+.signup-session-actions {
+  display: flex;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -1983,6 +2024,24 @@ button:hover {
 
 .public-card-history {
   grid-column: 1 / -1;
+}
+
+.public-notice-banner {
+  grid-column: 1 / -1;
+  border-color: #c9dbff;
+  background:
+    radial-gradient(circle at 96% 6%, rgba(29, 78, 216, 0.1), transparent 34%),
+    #f8fbff;
+}
+
+.public-booking-history-tabs {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  padding: 2px;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
 }
 
 .public-booking-history-list {

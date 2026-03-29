@@ -15,6 +15,7 @@ const INITIAL_FORM = {
 
 const ADMIN_EMAIL = "admin@calclone.dev";
 const ADMIN_PASSWORD = "Admin@1234";
+const ASSIGNMENT_MODE = process.env.NEXT_PUBLIC_ASSIGNMENT_MODE === "true";
 
 function getPasswordChecks(password) {
   return [
@@ -116,6 +117,7 @@ export default function EmailAuthForm({
   const showPasswordFeedback = isSignup && form.password.length > 0;
   const hasConfirmMismatch =
     isSignup && form.confirmPassword.length > 0 && form.password !== form.confirmPassword;
+  const showAdminQuickfill = !isSignup && requireAdmin && ASSIGNMENT_MODE;
 
   return (
     <form className="signup-email-form" onSubmit={handleSubmit}>
@@ -146,7 +148,7 @@ export default function EmailAuthForm({
         </button>
       </div>
 
-      {!isSignup && requireAdmin ? (
+      {showAdminQuickfill ? (
         <button
           type="button"
           className="admin-quickfill-btn"
@@ -278,7 +280,7 @@ export default function EmailAuthForm({
         {isSignup
           ? "Prefer not to use Google? You can sign up fully with email and password."
           : requireAdmin
-            ? `Admin panel access requires admin credentials. Admin: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`
+            ? "Admin panel access requires an admin account."
             : "Use the email and password you created during sign up."}
       </p>
 

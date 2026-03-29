@@ -168,6 +168,9 @@ export default function GoogleAuthControls({
           <strong>{user.name}</strong>
           {!compact && <small>{user.email}</small>}
         </div>
+        <span className={user.isAdmin ? "auth-role-badge auth-role-badge-admin" : "auth-role-badge"}>
+          {user.isAdmin ? "Admin" : "User"}
+        </span>
         <button type="button" className="auth-logout-btn" onClick={handleLogout}>
           Logout
         </button>

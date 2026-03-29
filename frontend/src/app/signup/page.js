@@ -1,7 +1,7 @@
 import Link from "next/link";
 import GoogleAuthControls from "@/components/GoogleAuthControls";
 import EmailAuthForm from "@/components/EmailAuthForm";
-import AdminLoginRedirectGuard from "@/components/AdminLoginRedirectGuard";
+import SignupSessionState from "@/components/SignupSessionState";
 
 export const metadata = {
   title: "Sign Up | cal.com Scheduler",
@@ -28,7 +28,6 @@ export default async function SignUpPage({ searchParams }) {
 
   return (
     <div className="signup-shell">
-      <AdminLoginRedirectGuard forceAdminAuth={forceAdminAuth} redirectTo={redirectTo} />
       <div className="signup-grid" aria-hidden="true" />
       <main className="signup-main">
         <section className="signup-card card">
@@ -39,23 +38,30 @@ export default async function SignUpPage({ searchParams }) {
           </p>
 
           {forceAdminAuth ? (
-            <p className="auth-warning">Admin authentication required to access the admin panel.</p>
+            <div className="auth-warning auth-warning-block">
+              <p>Admin authentication required to access the admin panel.</p>
+              <Link href="/book/intro-call" className="secondary-link">
+                Continue in user view
+              </Link>
+            </div>
           ) : null}
 
-          <div className="signup-auth-row">
-            <GoogleAuthControls redirectTo={redirectTo} requireAdmin={forceAdminAuth} />
-          </div>
+          <SignupSessionState forceAdminAuth={forceAdminAuth} redirectTo={redirectTo}>
+            <div className="signup-auth-row">
+              <GoogleAuthControls redirectTo={redirectTo} requireAdmin={forceAdminAuth} />
+            </div>
 
-          <div className="signup-divider" role="separator" aria-label="or" />
+            <div className="signup-divider" role="separator" aria-label="or" />
 
-          <section className="signup-email-block" aria-label="Email sign up form">
-            <h2>Email and password access</h2>
-            <EmailAuthForm
-              redirectTo={redirectTo}
-              initialMode={requestedMode}
-              requireAdmin={forceAdminAuth}
-            />
-          </section>
+            <section className="signup-email-block" aria-label="Email sign up form">
+              <h2>Email and password access</h2>
+              <EmailAuthForm
+                redirectTo={redirectTo}
+                initialMode={requestedMode}
+                requireAdmin={forceAdminAuth}
+              />
+            </section>
+          </SignupSessionState>
 
           <div className="signup-links">
             <Link href="/">Back to landing</Link>

@@ -22,6 +22,7 @@ const PASSWORD_HASH_PREFIX = "scrypt";
 const ASSIGNMENT_DEFAULT_USER_ID = Number(process.env.ASSIGNMENT_DEFAULT_USER_ID || 0);
 const HARD_CODED_ADMIN_EMAIL = "admin@calclone.dev";
 const HARD_CODED_ADMIN_PASSWORD = "Admin@1234";
+const ALLOW_VERCEL_PREVIEW_ORIGINS = process.env.ALLOW_VERCEL_PREVIEW_ORIGINS === "true";
 const HARD_CODED_ADMIN_USER_ID =
   Number.isInteger(ASSIGNMENT_DEFAULT_USER_ID) && ASSIGNMENT_DEFAULT_USER_ID > 0
     ? ASSIGNMENT_DEFAULT_USER_ID
@@ -40,6 +41,16 @@ const CONFIGURED_CORS_ORIGINS = new Set(
     .filter(Boolean)
 );
 
+const ADMIN_EMAILS = new Set(
+  [
+    HARD_CODED_ADMIN_EMAIL,
+    ...String(process.env.ADMIN_EMAILS || "")
+      .split(",")
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean),
+  ].filter(Boolean)
+);
+
 function isAllowedCorsOrigin(origin) {
   if (!origin) {
     // Non-browser requests (curl, server-to-server) don't send an Origin header.
@@ -48,6 +59,10 @@ function isAllowedCorsOrigin(origin) {
 
   if (LOCAL_ALLOWED_ORIGINS.has(origin) || CONFIGURED_CORS_ORIGINS.has(origin)) {
     return true;
+  }
+
+  if (!ALLOW_VERCEL_PREVIEW_ORIGINS) {
+    return false;
   }
 
   try {
@@ -138,8 +153,16 @@ function isAdminUserId(userId) {
   );
 }
 
+function isAdminEmail(email) {
+  return ADMIN_EMAILS.has(String(email || "").toLowerCase());
+}
+
+function isAdminRequest(req) {
+  return isAdminUserId(req.userId) || isAdminEmail(req.auth?.email);
+}
+
 function requireAdmin(req, res, next) {
-  if (!isAdminUserId(req.userId)) {
+  if (!isAdminRequest(req)) {
     return res.status(403).json({ message: "Admin access required" });
   }
 
@@ -384,11 +407,13 @@ app.post("/api/auth/email-signin", async (req, res) => {
     parsed.data.password === HARD_CODED_ADMIN_PASSWORD
   ) {
     const adminRows = await query(
-      "SELECT id, name, email FROM users WHERE id = ?",
-      [HARD_CODED_ADMIN_USER_ID]
+      "SELECT id, name, email FROM users WHERE LOWER(email) = ? LIMIT 1",
+      [HARD_CODED_ADMIN_EMAIL]
     );
 
-    const adminUser = adminRows[0];
+    const adminUser = adminRows[0] || (
+      await query("SELECT id, name, email FROM users WHERE id = ? LIMIT 1", [HARD_CODED_ADMIN_USER_ID])
+    )[0];
     if (!adminUser) {
       return res.status(500).json({ message: "Admin account is not initialized" });
     }
@@ -481,7 +506,7 @@ app.get("/api/auth/me", async (req, res) => {
     return res.status(401).json({ message: "User not found" });
   }
 
-  const isAdmin = isAdminUserId(user.id);
+  const isAdmin = isAdminRequest(req);
   const normalizedUser = isAdmin
     ? {
         ...user,

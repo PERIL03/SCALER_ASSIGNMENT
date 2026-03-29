@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DateTime } from "luxon";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import GoogleAuthControls from "@/components/GoogleAuthControls";
 import { api } from "@/lib/api";
 
@@ -13,6 +13,7 @@ function getDefaultDate() {
 
 export default function PublicBookingPage() {
   const { slug } = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
 
   const [eventType, setEventType] = useState(null);
@@ -26,6 +27,7 @@ export default function PublicBookingPage() {
   const [pastBookings, setPastBookings] = useState([]);
   const [bookingsLoading, setBookingsLoading] = useState(true);
   const [bookingsError, setBookingsError] = useState("");
+  const [historyTab, setHistoryTab] = useState("active");
 
   useEffect(() => {
     let cancelled = false;
@@ -121,6 +123,37 @@ export default function PublicBookingPage() {
     return DateTime.fromISO(date).toLocaleString(DateTime.DATE_FULL);
   }, [date]);
 
+  const adminOnlyNotice = searchParams.get("notice") === "admin-only";
+
+  const cancelledBookings = useMemo(() => {
+    const all = [...upcomingBookings, ...pastBookings];
+    return all.filter((booking) => {
+      const status = String(booking.status || "").toLowerCase();
+      return status === "cancelled" || status === "canceled";
+    });
+  }, [pastBookings, upcomingBookings]);
+
+  const activeBookings = useMemo(() => {
+    return upcomingBookings.filter((booking) => {
+      const status = String(booking.status || "").toLowerCase();
+      return status !== "cancelled" && status !== "canceled";
+    });
+  }, [upcomingBookings]);
+
+  const previousBookings = useMemo(() => {
+    return pastBookings.filter((booking) => {
+      const status = String(booking.status || "").toLowerCase();
+      return status !== "cancelled" && status !== "canceled";
+    });
+  }, [pastBookings]);
+
+  const visibleHistoryBookings =
+    historyTab === "active"
+      ? activeBookings
+      : historyTab === "previous"
+        ? previousBookings
+        : cancelledBookings;
+
   return (
     <div className="public-page-shell">
       <header className="public-page-nav">
@@ -143,6 +176,22 @@ export default function PublicBookingPage() {
       </header>
 
       <div className="public-wrapper">
+        {adminOnlyNotice ? (
+          <section className="public-card public-notice-banner" aria-live="polite">
+            <p className="public-step">Notice</p>
+            <h2>Admin panel is restricted</h2>
+            <p className="page-subtitle">
+              You are signed in as a regular user. Continue booking as a user, or switch account for
+              admin access.
+            </p>
+            <div className="button-row">
+              <Link className="topbar-switch-link" href="/signup?next=/dashboard&admin=1&mode=signin">
+                Switch account
+              </Link>
+            </div>
+          </section>
+        ) : null}
+
         <section className="public-card public-card-event">
           {eventType ? (
             <>
@@ -234,37 +283,41 @@ export default function PublicBookingPage() {
 
           {!bookingsLoading && !bookingsError ? (
             <div className="public-booking-history-group">
-              <h3 className="public-booking-history-title">Active bookings</h3>
-              {upcomingBookings.length === 0 ? (
-                <p className="page-subtitle">No active bookings right now.</p>
-              ) : (
-                <div className="public-booking-history-list">
-                  {upcomingBookings.map((booking) => (
-                    <article key={booking.id} className="public-booking-history-item">
-                      <p>
-                        <strong>{booking.eventTitle}</strong>
-                      </p>
-                      <p>
-                        {DateTime.fromISO(booking.startTime).toLocaleString(DateTime.DATETIME_MED)}
-                      </p>
-                      <p>
-                        Status: <span className="booking-status-pill">{booking.status}</span>
-                      </p>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : null}
+              <div className="public-booking-history-tabs" role="tablist" aria-label="Booking history tabs">
+                <button
+                  type="button"
+                  className={historyTab === "active" ? "view-toggle-btn view-toggle-btn-active" : "view-toggle-btn"}
+                  onClick={() => setHistoryTab("active")}
+                  role="tab"
+                  aria-selected={historyTab === "active"}
+                >
+                  Active ({activeBookings.length})
+                </button>
+                <button
+                  type="button"
+                  className={historyTab === "previous" ? "view-toggle-btn view-toggle-btn-active" : "view-toggle-btn"}
+                  onClick={() => setHistoryTab("previous")}
+                  role="tab"
+                  aria-selected={historyTab === "previous"}
+                >
+                  Previous ({previousBookings.length})
+                </button>
+                <button
+                  type="button"
+                  className={historyTab === "cancelled" ? "view-toggle-btn view-toggle-btn-active" : "view-toggle-btn"}
+                  onClick={() => setHistoryTab("cancelled")}
+                  role="tab"
+                  aria-selected={historyTab === "cancelled"}
+                >
+                  Cancelled ({cancelledBookings.length})
+                </button>
+              </div>
 
-          {!bookingsLoading && !bookingsError ? (
-            <div className="public-booking-history-group">
-              <h3 className="public-booking-history-title">Previous bookings</h3>
-              {pastBookings.length === 0 ? (
-                <p className="page-subtitle">No previous bookings found for your account.</p>
+              {visibleHistoryBookings.length === 0 ? (
+                <p className="page-subtitle">No bookings in this section yet.</p>
               ) : (
                 <div className="public-booking-history-list">
-                  {pastBookings.map((booking) => (
+                  {visibleHistoryBookings.map((booking) => (
                     <article key={booking.id} className="public-booking-history-item">
                       <p>
                         <strong>{booking.eventTitle}</strong>
