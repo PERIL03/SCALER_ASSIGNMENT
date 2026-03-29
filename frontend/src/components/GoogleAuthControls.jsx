@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { getAuthErrorMessage } from "@/lib/authFeedback";
@@ -23,7 +24,9 @@ export default function GoogleAuthControls({
   const [user, setUser] = useState(null);
   const [readyForButton, setReadyForButton] = useState(false);
   const [error, setError] = useState("");
+  const [openMenu, setOpenMenu] = useState(false);
   const buttonContainerRef = useRef(null);
+  const dropdownRef = useRef(null);
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
@@ -64,6 +67,38 @@ export default function GoogleAuthControls({
     window.addEventListener(CREDENTIAL_EVENT, handleCredential);
     return () => window.removeEventListener(CREDENTIAL_EVENT, handleCredential);
   }, [redirectTo, requireAdmin, router]);
+
+  useEffect(() => {
+    if (!openMenu) {
+      return;
+    }
+
+    function handlePointerDown(event) {
+      if (!dropdownRef.current?.contains(event.target)) {
+        setOpenMenu(false);
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setOpenMenu(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [openMenu]);
+
+  useEffect(() => {
+    if (!user) {
+      setOpenMenu(false);
+    }
+  }, [user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -147,9 +182,11 @@ export default function GoogleAuthControls({
       await api.logout();
       setUser(null);
       setError("");
+      setOpenMenu(false);
       if (window.google?.accounts?.id) {
         window.google.accounts.id.disableAutoSelect();
       }
+      showToast("Logged out.", "info");
     } catch (err) {
       setError(getAuthErrorMessage(err, "Could not log out. Please try again."));
     }
@@ -164,6 +201,49 @@ export default function GoogleAuthControls({
   }
 
   if (user) {
+    if (compact) {
+      return (
+        <div className="auth-dropdown" ref={dropdownRef}>
+          <button
+            type="button"
+            className="auth-dropdown-trigger"
+            onClick={() => setOpenMenu((prev) => !prev)}
+            aria-haspopup="menu"
+            aria-expanded={openMenu}
+            aria-label="Open profile menu"
+          >
+            <span className="auth-avatar">{getInitial(user.name || user.email)}</span>
+            <span className="auth-dropdown-caret" aria-hidden="true">
+              v
+            </span>
+          </button>
+
+          {openMenu ? (
+            <div className="auth-dropdown-menu" role="menu">
+              <div className="auth-dropdown-head">
+                <strong>{user.name || "Account"}</strong>
+                <small>{user.email}</small>
+              </div>
+
+              <span className={user.isAdmin ? "auth-role-badge auth-role-badge-admin" : "auth-role-badge"}>
+                {user.isAdmin ? "Admin" : "User"}
+              </span>
+
+              <div className="auth-dropdown-links">
+                <Link href={user.isAdmin ? "/dashboard" : "/book/intro-call"} role="menuitem">
+                  {user.isAdmin ? "Open admin dashboard" : "Open user booking page"}
+                </Link>
+              </div>
+
+              <button type="button" className="auth-logout-btn" onClick={handleLogout}>
+                Logout
+              </button>
+            </div>
+          ) : null}
+        </div>
+      );
+    }
+
     return (
       <div className="auth-inline">
         <span className="auth-avatar">{getInitial(user.name || user.email)}</span>
